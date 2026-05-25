@@ -27,6 +27,7 @@ public class PlayerHUD : MonoBehaviour
 
     private PlayerStats stats;
     private InventorySystem inventory;
+    private WeaponSlotSystem weaponSlotSystem;
 
     void Start()
     {
@@ -40,6 +41,7 @@ public class PlayerHUD : MonoBehaviour
 
         stats = player.GetComponent<PlayerStats>();
         inventory = player.GetComponent<InventorySystem>();
+        weaponSlotSystem = player.GetComponent<WeaponSlotSystem>();
 
         // 注册事件
         if (stats != null)
@@ -96,9 +98,13 @@ public class PlayerHUD : MonoBehaviour
     // ── 弹药更新 ──────────────────────────────────────
     private void UpdateAmmo()
     {
-        if (ammoText == null || inventory == null) return;
+        if (ammoText == null) return;
 
-        WeaponBase weapon = inventory.equippedWeapon;
+        // 优先从武器槽系统读取当前手持武器
+        WeaponBase weapon = weaponSlotSystem != null
+            ? weaponSlotSystem.CurrentWeapon
+            : (inventory != null ? inventory.equippedWeapon : null);
+
         if (weapon != null)
             ammoText.text = $"{weapon.currentAmmo} / {weapon.maxAmmo}";
         else

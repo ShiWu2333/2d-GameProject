@@ -1,19 +1,19 @@
 using UnityEngine;
 
 /// <summary>
-/// 玩家控制器：WASD移动、鼠标瞄准、Shift奔跑、左键开火、R换弹
-///
-/// 朝向方案（俯视角2D）：
-///   - 玩家身体（SpriteRenderer）朝向移动方向
-///   - AimPivot 节点始终朝向鼠标（武器/枪口挂在此节点下）
+/// 玩家控制器 v2
+/// 新增：持枪移速修正、半自动触发传参、刀持刀移速加成
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(PlayerStats))]
 public class PlayerController : MonoBehaviour
 {
     [Header("移动速度")]
-    public float walkSpeed = 4f;
+    public float walkSpeed   = 4f;
     public float sprintSpeed = 7f;
+
+    [Tooltip("持刀时的额外移速加成倍率（叠加在武器 moveSpeedMult 之上）")]
+    public float knifeSpeedBonus = 1.15f;
 
     [Header("朝向节点")]
     [Tooltip("跟随鼠标旋转的节点，武器/枪口挂在此节点下")]
@@ -25,29 +25,31 @@ public class PlayerController : MonoBehaviour
     [Tooltip("身体朝向旋转速度（0 = 瞬间）")]
     public float bodyRotateSpeed = 0f;
 
-    // 组件引用
+    // ── 组件引用 ──────────────────────────────────────
     private Rigidbody2D rb;
     private PlayerStats stats;
-    private Camera mainCam;
+    private Camera      mainCam;
 
-    // 当前武器
+    // ── 当前武器 ──────────────────────────────────────
     private WeaponBase currentWeapon;
 
-    // 状态
+    // ── 状态 ──────────────────────────────────────────
     private Vector2 moveInput;
-    private bool isSprinting;
+    private bool    isSprinting;
+    private bool    triggerHeld;
 
     /// <summary>鼠标世界坐标（供其他脚本读取）</summary>
     public Vector2 MouseWorldPos { get; private set; }
 
+    // ══════════════════════════════════════════════════
     void Awake()
     {
-        rb    = GetComponent<Rigidbody2D>();
-        stats = GetComponent<PlayerStats>();
+        rb      = GetComponent<Rigidbody2D>();
+        stats   = GetComponent<PlayerStats>();
         mainCam = Camera.main;
 
         rb.gravityScale   = 0f;
-        rb.freezeRotation = true;   // 物理不旋转，由脚本控制
+        rb.freezeRotation = true;
 
         if (bodySprite == null)
             bodySprite = GetComponent<SpriteRenderer>();
@@ -81,32 +83,41 @@ public class PlayerController : MonoBehaviour
                       && moveInput.sqrMagnitude > 0f
                       && stats.HasStamina;
 
+        triggerHeld = Input.GetMouseButton(0);
+
         stats.TickStamina(isSprinting);
     }
 
-    // ── 移动 ──────────────────────────────────────────
+    // ── 移动（含持枪移速修正）────────────────────────
     private void Move()
     {
-        float speed = isSprinting ? sprintSpeed : walkSpeed;
-        rb.velocity = moveInput * speed;
+        float baseSpeed = isSprinting ? sprintSpeed : walkSpeed;
+
+        // 持枪移速修正
+        float weaponMult = 1f;
+        if (currentWeapon != null)
+        {
+            weaponMult = currentWeapon.moveSpeedMult;
+
+            // 持刀额外加成
+            if (currentWeapon is Knife)
+                weaponMult *= knifeSpeedBonus;
+        }
+
+        rb.velocity = moveInput * baseSpeed * weaponMult;
     }
 
     // ── 身体朝向移动方向 ──────────────────────────────
     private void RotateBodyToMovement()
     {
-        if (moveInput.sqrMagnitude < 0.01f) return; // 静止时保持上一帧朝向
+        if (moveInput.sqrMagnitude < 0.01f) return;
 
         float targetAngle = Mathf.Atan2(moveInput.y, moveInput.x) * Mathf.Rad2Deg - 90f;
-        // -90° 修正：让 Sprite 的"上方"对应移动方向
 
         if (bodyRotateSpeed <= 0f)
-        {
-            // 瞬间旋转
             transform.rotation = Quaternion.Euler(0f, 0f, targetAngle);
-        }
         else
         {
-            // 平滑旋转
             Quaternion target = Quaternion.Euler(0f, 0f, targetAngle);
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation, target, bodyRotateSpeed * Time.deltaTime);
@@ -116,18 +127,21 @@ public class PlayerController : MonoBehaviour
     // ── AimPivot 朝向鼠标 ─────────────────────────────
     private void AimTowardsMouse()
     {
-        // 屏幕坐标 → 世界坐标（正交摄像机）
         Vector3 mouseScreen = Input.mousePosition;
         mouseScreen.z = Mathf.Abs(mainCam.transform.position.z);
         MouseWorldPos = mainCam.ScreenToWorldPoint(mouseScreen);
 
         if (aimPivot == null) return;
 
-        Vector2 dir = MouseWorldPos - (Vector2)transform.position;
-        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        Vector2 dir   = MouseWorldPos - (Vector2)transform.position;
+        float   angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
-        // AimPivot 在世界空间旋转，不受身体旋转影响
-        aimPivot.rotation = Quaternion.Euler(0f, 0f, angle);
+        // 基础朝向
+        Quaternion baseRot = Quaternion.Euler(0f, 0f, angle);
+
+        // 叠加后坐力偏移（向上偏移，模拟枪口上扬）
+        float recoilOffset = currentWeapon != null ? currentWeapon.CurrentRecoilAngle : 0f;
+        aimPivot.rotation = baseRot * Quaternion.Euler(0f, 0f, recoilOffset);
     }
 
     // ── 武器输入 ──────────────────────────────────────
@@ -135,10 +149,10 @@ public class PlayerController : MonoBehaviour
     {
         if (currentWeapon == null) return;
 
-        if (Input.GetMouseButton(0))        // 左键持续：全自动开火
-            currentWeapon.TryShoot();
+        // 传入当前帧扳机状态（支持全自动/半自动）
+        currentWeapon.TryShoot(triggerHeld);
 
-        if (Input.GetKeyDown(KeyCode.R))    // R：换弹
+        if (Input.GetKeyDown(KeyCode.R))
             currentWeapon.TryReload();
     }
 
@@ -148,6 +162,6 @@ public class PlayerController : MonoBehaviour
         currentWeapon = weapon;
     }
 
-    public bool IsSprinting  => isSprinting;
-    public Vector2 MoveInput => moveInput;
+    public bool    IsSprinting  => isSprinting;
+    public Vector2 MoveInput    => moveInput;
 }
