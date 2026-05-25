@@ -25,7 +25,9 @@ public class Bullet : MonoBehaviour
 
     private void Start()
     {
-        origin = transform.position;
+        // 若武器未赋值 origin，则以生成位置为起点
+        if (origin == Vector2.zero)
+            origin = transform.position;
         Destroy(gameObject, MaxLifetime);
     }
 

@@ -2,83 +2,109 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// 护甲组件
-/// 挂在任何可穿戴护甲的角色（玩家/敌人）身上
-/// 护甲会先吸收伤害，耐久耗尽后护甲失效，之后全额承受人体伤害
+/// 护甲组件 v2
+/// 挂在玩家/敌人身上，管理护甲穿戴、耐久、负面效果、修复
 /// </summary>
 public class ArmorComponent : MonoBehaviour
 {
-    [Header("护甲属性")]
-    [Tooltip("护甲等级，决定对不同穿透弹药的抵抗能力")]
-    public ArmorClass armorClass = ArmorClass.Light;
+    [Header("当前装备的护甲（运行时可动态更换）")]
+    [SerializeField] private ArmorData equippedArmor;
 
-    [Tooltip("护甲最大耐久")]
-    public float maxDurability = 100f;
+    // ── 运行时状态 ────────────────────────────────────
+    public float currentDurability  { get; private set; }
+    public int   remainingRepairs   { get; private set; }
+    public bool  IsBroken           => currentDurability <= 0f;
+    public bool  HasArmor           => equippedArmor != null;
 
-    [Tooltip("护甲当前耐久")]
-    public float currentDurability { get; private set; }
+    // 护甲等级（无甲时返回 None）
+    public ArmorClass ArmorClass    => HasArmor ? equippedArmor.armorClass : ArmorClass.None;
 
-    [Header("护甲吸收")]
-    [Tooltip("护甲完好时，吸收人体伤害的比例（0~1）。耐久越低吸收越少")]
-    [Range(0f, 1f)]
-    public float maxAbsorption = 0.8f;
+    // 当前有效吸收率（随耐久线性衰减）
+    public float CurrentAbsorption  =>
+        (HasArmor && !IsBroken)
+            ? equippedArmor.maxAbsorption * (currentDurability / equippedArmor.maxDurability)
+            : 0f;
 
-    // 事件
+    // 负面效果：移速倍率（无甲或护甲损毁时无惩罚）
+    public float WalkSpeedPenalty   => (HasArmor && !IsBroken) ? equippedArmor.walkSpeedPenalty   : 1f;
+    public float SprintSpeedPenalty => (HasArmor && !IsBroken) ? equippedArmor.sprintSpeedPenalty : 1f;
+
+    // ── 事件 ──────────────────────────────────────────
     public UnityEvent<float, float> onDurabilityChanged;  // (current, max)
+    public UnityEvent<ArmorData>    onArmorEquipped;
     public UnityEvent               onArmorBroken;
+    public UnityEvent               onArmorRemoved;
 
-    public bool IsBroken => currentDurability <= 0f;
-
-    /// <summary>护甲有效吸收率（随耐久线性衰减）</summary>
-    public float CurrentAbsorption =>
-        IsBroken ? 0f : maxAbsorption * (currentDurability / maxDurability);
-
+    // ══════════════════════════════════════════════════
     void Awake()
     {
-        currentDurability = maxDurability;
+        if (equippedArmor != null)
+            InitArmor();
+    }
+
+    private void InitArmor()
+    {
+        currentDurability = equippedArmor.maxDurability;
+        remainingRepairs  = equippedArmor.maxRepairCount; // -1 = 无限
     }
 
     // ══════════════════════════════════════════════════
-    //  核心接口：处理一次命中
-    //  返回最终传递给 IDamageable 的人体伤害值
+    //  装备 / 卸下
+    // ══════════════════════════════════════════════════
+
+    /// <summary>装备新护甲（替换当前护甲）</summary>
+    public void EquipArmor(ArmorData armor)
+    {
+        equippedArmor    = armor;
+        InitArmor();
+        onArmorEquipped?.Invoke(armor);
+        onDurabilityChanged?.Invoke(currentDurability, equippedArmor.maxDurability);
+        Debug.Log($"[ArmorComponent] 装备护甲：{armor.armorName}");
+    }
+
+    /// <summary>卸下护甲</summary>
+    public void RemoveArmor()
+    {
+        equippedArmor = null;
+        currentDurability = 0f;
+        onArmorRemoved?.Invoke();
+    }
+
+    /// <summary>获取当前护甲数据（只读）</summary>
+    public ArmorData GetArmorData() => equippedArmor;
+
+    // ══════════════════════════════════════════════════
+    //  伤害处理
     // ══════════════════════════════════════════════════
 
     /// <summary>
     /// 处理弹药命中，返回穿透到人体的实际伤害
     /// </summary>
-    /// <param name="rawDamage">武器基础伤害</param>
-    /// <param name="ammo">弹药数据（含穿透等级）</param>
     public float ProcessHit(float rawDamage, AmmoData ammo)
     {
-        if (ammo == null)
-        {
-            // 无弹药数据（近战等）：直接全额伤害，不消耗护甲
+        if (!HasArmor || ammo == null)
             return rawDamage;
-        }
 
-        // 1. 计算人体伤害倍率
-        float bodyDamageMult = ammo.GetDamageMultiplier(armorClass);
+        // 1. 穿透 vs 护甲等级 → 人体伤害倍率
+        float bodyDamageMult = ammo.GetDamageMultiplier(ArmorClass);
+        float bodyDamage     = rawDamage * bodyDamageMult;
 
-        // 2. 护甲完好时，额外用吸收率再减一次人体伤害
-        float bodyDamage = rawDamage * bodyDamageMult;
+        // 2. 护甲吸收（随耐久衰减）
         if (!IsBroken)
             bodyDamage *= (1f - CurrentAbsorption);
 
-        // 3. 计算护甲耐久消耗
-        float durabilityDamageMult = ammo.GetArmorDurabilityDamageMultiplier(armorClass);
-        float durabilityDamage     = rawDamage * durabilityDamageMult;
-        ApplyDurabilityDamage(durabilityDamage);
+        // 3. 护甲耐久消耗
+        float durMult    = ammo.GetArmorDurabilityDamageMultiplier(ArmorClass);
+        float durDamage  = rawDamage * durMult;
+        ApplyDurabilityDamage(durDamage);
 
         return Mathf.Max(0f, bodyDamage);
     }
 
-    /// <summary>
-    /// 近战命中：不消耗护甲耐久，但护甲吸收部分伤害
-    /// </summary>
+    /// <summary>近战命中：护甲减伤但不消耗耐久</summary>
     public float ProcessMeleeHit(float rawDamage)
     {
-        if (IsBroken) return rawDamage;
-        // 近战对护甲穿透能力弱，吸收率减半
+        if (!HasArmor || IsBroken) return rawDamage;
         return rawDamage * (1f - CurrentAbsorption * 0.5f);
     }
 
@@ -88,11 +114,11 @@ public class ArmorComponent : MonoBehaviour
 
     private void ApplyDurabilityDamage(float amount)
     {
-        if (IsBroken || amount <= 0f) return;
+        if (!HasArmor || IsBroken || amount <= 0f) return;
 
-        float prev = currentDurability;
+        float prev        = currentDurability;
         currentDurability = Mathf.Max(0f, currentDurability - amount);
-        onDurabilityChanged?.Invoke(currentDurability, maxDurability);
+        onDurabilityChanged?.Invoke(currentDurability, equippedArmor.maxDurability);
 
         if (prev > 0f && currentDurability <= 0f)
         {
@@ -101,15 +127,58 @@ public class ArmorComponent : MonoBehaviour
         }
     }
 
-    public void RepairArmor(float amount)
+    // ══════════════════════════════════════════════════
+    //  修复
+    // ══════════════════════════════════════════════════
+
+    /// <summary>
+    /// 尝试使用修维包修复护甲
+    /// 返回 true 表示修复成功
+    /// </summary>
+    public bool TryRepair(RepairKit kit)
     {
-        currentDurability = Mathf.Min(maxDurability, currentDurability + amount);
-        onDurabilityChanged?.Invoke(currentDurability, maxDurability);
+        if (!HasArmor)
+        {
+            Debug.Log("[ArmorComponent] 未装备护甲，无法修复");
+            return false;
+        }
+        if (!IsBroken && currentDurability >= equippedArmor.maxDurability)
+        {
+            Debug.Log("[ArmorComponent] 护甲耐久已满，无需修复");
+            return false;
+        }
+        if (!kit.CanRepair(equippedArmor))
+        {
+            Debug.Log($"[ArmorComponent] {kit.kitName} 无法修复 {equippedArmor.armorName}（等级不匹配）");
+            return false;
+        }
+        // 检查可修次数（-1 = 无限）
+        if (equippedArmor.maxRepairCount >= 0 && remainingRepairs <= 0)
+        {
+            Debug.Log($"[ArmorComponent] {equippedArmor.armorName} 已达最大修复次数");
+            return false;
+        }
+
+        // 执行修复
+        float restoreAmount = equippedArmor.maxDurability * equippedArmor.repairRestoreRatio;
+        currentDurability   = Mathf.Min(equippedArmor.maxDurability,
+                                        currentDurability + restoreAmount);
+
+        if (equippedArmor.maxRepairCount >= 0)
+            remainingRepairs--;
+
+        onDurabilityChanged?.Invoke(currentDurability, equippedArmor.maxDurability);
+        Debug.Log($"[ArmorComponent] 修复成功：{equippedArmor.armorName}" +
+                  $"  耐久 {currentDurability:F0}/{equippedArmor.maxDurability:F0}" +
+                  $"  剩余修复次数：{(equippedArmor.maxRepairCount < 0 ? "∞" : remainingRepairs.ToString())}");
+        return true;
     }
 
+    /// <summary>强制满耐久（调试用）</summary>
     public void RepairFull()
     {
-        currentDurability = maxDurability;
-        onDurabilityChanged?.Invoke(currentDurability, maxDurability);
+        if (!HasArmor) return;
+        currentDurability = equippedArmor.maxDurability;
+        onDurabilityChanged?.Invoke(currentDurability, equippedArmor.maxDurability);
     }
 }

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6041a1268c2ecd4b809a272619d6004, type: 3}
+  m_Name: "\u5B9A\u5236\u8F7B\u88C5"
+  m_EditorClassIdentifier: 
+  armorName: "\u5B9A\u5236\u8F7B\u88C5"
+  armorType: 7
+  icon: {fileID: 0}
+  armorClass: 4
+  maxDurability: 150
+  maxAbsorption: 0.82
+  walkSpeedPenalty: 0.98
+  sprintSpeedPenalty: 0.97
+  maxRepairCount: -1
+  repairRestoreRatio: 0.4
+  minRepairKitTier: 3

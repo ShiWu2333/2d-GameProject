@@ -41,30 +41,41 @@ public class WeaponSlotHUD : MonoBehaviour
     public SlotUI[] slots = new SlotUI[3];
 
     [Header("高亮颜色")]
-    public Color selectedColor   = new Color(1f, 0.85f, 0f, 0.9f);   // 金黄色
-    public Color normalColor     = new Color(0.15f, 0.15f, 0.15f, 0.75f); // 深灰半透明
-    public Color emptySlotColor  = new Color(0.1f, 0.1f, 0.1f, 0.5f);    // 空槽更暗
+    public Color selectedColor   = new Color(1f, 0.85f, 0f, 0.9f);
+    public Color normalColor     = new Color(0.15f, 0.15f, 0.15f, 0.75f);
+    public Color emptySlotColor  = new Color(0.1f, 0.1f, 0.1f, 0.5f);
 
     [Header("武器图标（无武器时显示）")]
-    public Sprite emptySlotSprite;   // 空槽占位图（可留 null）
+    public Sprite emptySlotSprite;
 
-    // 武器图标配置（在 Inspector 中手动指定，或由武器自身携带）
     [Header("武器图标（按槽位顺序：主武器1、主武器2、刀）")]
     public Sprite[] weaponIcons = new Sprite[3];
+
+    [Header("直接引用（由配置向导自动赋值，无需手动填）")]
+    [Tooltip("直接拖入玩家身上的 WeaponSlotSystem，优先于 Tag 查找")]
+    public WeaponSlotSystem slotSystemRef;
 
     private WeaponSlotSystem slotSystem;
     private int currentSlotIndex = 0;
 
     void Start()
     {
-        // 找到玩家上的 WeaponSlotSystem
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null)
+        // 优先使用直接引用，其次通过 Tag 查找
+        if (slotSystemRef != null)
         {
-            slotSystem = player.GetComponent<WeaponSlotSystem>();
-            if (slotSystem != null)
-                slotSystem.onSlotChanged.AddListener(OnSlotChanged);
+            slotSystem = slotSystemRef;
         }
+        else
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+                slotSystem = player.GetComponent<WeaponSlotSystem>();
+        }
+
+        if (slotSystem != null)
+            slotSystem.onSlotChanged.AddListener(OnSlotChanged);
+        else
+            Debug.LogWarning("[WeaponSlotHUD] 找不到 WeaponSlotSystem，请检查玩家 Tag 或直接赋值 slotSystemRef");
 
         // 初始化按键提示
         string[] keyHints = { "1", "2", "3" };
@@ -75,7 +86,6 @@ public class WeaponSlotHUD : MonoBehaviour
                 slots[i].keyHintText.text = keyHints[i];
         }
 
-        // 初始刷新
         RefreshAllSlots();
         HighlightSlot(0);
     }

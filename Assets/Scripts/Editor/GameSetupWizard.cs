@@ -63,38 +63,38 @@ public class GameSetupWizard : EditorWindow
     {
         new WeaponDef { label="冲锋枪",     script=typeof(SMG),           ammo=AmmoType.SMG,
             bodyCol=new Color(0f,0.85f,0.85f),  barrelCol=new Color(0f,0.5f,0.5f),
-            bodySize=new Vector2(0.28f,0.18f),  barrelSize=new Vector2(0.08f,0.22f),
-            barrelOffset=new Vector2(0f,0.18f), firePointOffset=new Vector2(0f,0.30f) },
+            bodySize=new Vector2(0.18f,0.28f),  barrelSize=new Vector2(0.22f,0.08f),
+            barrelOffset=new Vector2(0.18f,0f), firePointOffset=new Vector2(0.30f,0f) },
 
         new WeaponDef { label="突击步枪",   script=typeof(AssaultRifle),  ammo=AmmoType.Rifle,
             bodyCol=new Color(0.2f,0.4f,1f),    barrelCol=new Color(0.1f,0.2f,0.7f),
-            bodySize=new Vector2(0.30f,0.16f),  barrelSize=new Vector2(0.08f,0.28f),
-            barrelOffset=new Vector2(0f,0.20f), firePointOffset=new Vector2(0f,0.35f) },
+            bodySize=new Vector2(0.16f,0.30f),  barrelSize=new Vector2(0.28f,0.08f),
+            barrelOffset=new Vector2(0.20f,0f), firePointOffset=new Vector2(0.35f,0f) },
 
         new WeaponDef { label="射手步枪",   script=typeof(MarksmanRifle), ammo=AmmoType.Rifle,
             bodyCol=new Color(0.1f,0.6f,0.2f),  barrelCol=new Color(0.05f,0.35f,0.1f),
-            bodySize=new Vector2(0.28f,0.14f),  barrelSize=new Vector2(0.07f,0.36f),
-            barrelOffset=new Vector2(0f,0.22f), firePointOffset=new Vector2(0f,0.42f) },
+            bodySize=new Vector2(0.14f,0.28f),  barrelSize=new Vector2(0.36f,0.07f),
+            barrelOffset=new Vector2(0.22f,0f), firePointOffset=new Vector2(0.42f,0f) },
 
         new WeaponDef { label="连发霰弹枪", script=typeof(AutoShotgun),   ammo=AmmoType.Shotgun,
             bodyCol=new Color(1f,0.5f,0f),      barrelCol=new Color(0.7f,0.3f,0f),
-            bodySize=new Vector2(0.34f,0.20f),  barrelSize=new Vector2(0.14f,0.18f),
-            barrelOffset=new Vector2(0f,0.17f), firePointOffset=new Vector2(0f,0.28f) },
+            bodySize=new Vector2(0.20f,0.34f),  barrelSize=new Vector2(0.18f,0.14f),
+            barrelOffset=new Vector2(0.17f,0f), firePointOffset=new Vector2(0.28f,0f) },
 
         new WeaponDef { label="轻机枪",     script=typeof(LMG),           ammo=AmmoType.LMG,
             bodyCol=new Color(1f,0.9f,0f),      barrelCol=new Color(0.7f,0.6f,0f),
-            bodySize=new Vector2(0.40f,0.22f),  barrelSize=new Vector2(0.10f,0.32f),
-            barrelOffset=new Vector2(0f,0.24f), firePointOffset=new Vector2(0f,0.40f) },
+            bodySize=new Vector2(0.22f,0.40f),  barrelSize=new Vector2(0.32f,0.10f),
+            barrelOffset=new Vector2(0.24f,0f), firePointOffset=new Vector2(0.40f,0f) },
 
         new WeaponDef { label="自动手枪",   script=typeof(AutoPistol),    ammo=AmmoType.SMG,
             bodyCol=new Color(0.7f,0.2f,1f),    barrelCol=new Color(0.45f,0.1f,0.7f),
-            bodySize=new Vector2(0.22f,0.16f),  barrelSize=new Vector2(0.07f,0.18f),
-            barrelOffset=new Vector2(0f,0.15f), firePointOffset=new Vector2(0f,0.25f) },
+            bodySize=new Vector2(0.16f,0.22f),  barrelSize=new Vector2(0.18f,0.07f),
+            barrelOffset=new Vector2(0.15f,0f), firePointOffset=new Vector2(0.25f,0f) },
 
         new WeaponDef { label="刀",         script=typeof(Knife),         ammo=AmmoType.None,
             bodyCol=new Color(0.75f,0.75f,0.75f), barrelCol=new Color(0.95f,0.95f,0.95f),
-            bodySize=new Vector2(0.10f,0.30f),  barrelSize=new Vector2(0.06f,0.20f),
-            barrelOffset=new Vector2(0f,0.26f), firePointOffset=new Vector2(0f,0.38f) },
+            bodySize=new Vector2(0.30f,0.10f),  barrelSize=new Vector2(0.20f,0.06f),
+            barrelOffset=new Vector2(0.26f,0f), firePointOffset=new Vector2(0.38f,0f) },
     };
 
     // 子弹定义
@@ -140,7 +140,11 @@ public class GameSetupWizard : EditorWindow
         }
         if (targetCanvas == null)
         {
-            targetCanvas = FindObjectOfType<Canvas>();
+#if UNITY_2023_1_OR_NEWER
+            targetCanvas = Object.FindFirstObjectByType<Canvas>();
+#else
+            targetCanvas = Object.FindObjectOfType<Canvas>();
+#endif
         }
     }
 
@@ -329,13 +333,13 @@ public class GameSetupWizard : EditorWindow
         {
             string path = $"{BULLET_DIR}/{def.name}.prefab";
 
-            // 已存在则复用
+            // 已存在则复用，不重复创建
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (existing != null) { map[def.ammo] = existing; continue; }
 
             var root = new GameObject(def.name);
 
-            // Bullet 脚本
+            // Bullet 脚本（RequireComponent 会自动添加 Rigidbody2D）
             var b = root.AddComponent<Bullet>();
             b.damage   = 10f;
             b.maxRange = 20f;
@@ -343,8 +347,8 @@ public class GameSetupWizard : EditorWindow
             // 外观
             MakeSquareChild(root.transform, "Visual", white, def.color, def.size);
 
-            // 物理
-            var rb2 = root.AddComponent<Rigidbody2D>();
+            // 物理（Bullet 的 RequireComponent 已自动添加 Rigidbody2D）
+            var rb2 = root.GetComponent<Rigidbody2D>();
             rb2.gravityScale = 0f;
             rb2.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
@@ -496,9 +500,10 @@ public class GameSetupWizard : EditorWindow
 
         var hud = GetOrAdd<WeaponSlotHUD>(panelGO);
         Undo.RecordObject(hud, "Setup HUD");
-        hud.selectedColor  = colSelected;
-        hud.normalColor    = colNormal;
-        hud.emptySlotColor = colEmpty;
+        hud.selectedColor   = colSelected;
+        hud.normalColor     = colNormal;
+        hud.emptySlotColor  = colEmpty;
+        hud.slotSystemRef   = slotSys;   // 直接赋引用，不依赖Tag查找
         if (hud.slots == null || hud.slots.Length != 3)
             hud.slots = new WeaponSlotHUD.SlotUI[3];
 

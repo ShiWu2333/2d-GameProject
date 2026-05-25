@@ -182,8 +182,7 @@ public static class AmmoDataCreator
     // ── 自动赋值给场景中的武器 ────────────────────────
     private static void AutoAssignToSceneWeapons()
     {
-        // 找场景中所有 WeaponBase
-        var allWeapons = Object.FindObjectsOfType<WeaponBase>(true);
+        var allWeapons = Object.FindObjectsByType<WeaponBase>(FindObjectsSortMode.None);
         if (allWeapons.Length == 0) return;
 
         foreach (var def in Defs)

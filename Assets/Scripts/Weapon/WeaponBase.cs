@@ -197,7 +197,7 @@ public abstract class WeaponBase : MonoBehaviour
 
         Rigidbody2D rb = go.GetComponent<Rigidbody2D>();
         if (rb != null)
-            rb.velocity = go.transform.up * bulletSpeed;
+            rb.velocity = go.transform.right * bulletSpeed;
     }
 
     // ══════════════════════════════════════════════════

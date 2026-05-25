@@ -16,15 +16,17 @@ public class LMG : WeaponBase
         damage         = 18f;
         fireRate       = 0.10f;   // 10发/秒
         maxAmmo        = 100;
-        reloadTime     = 4.5f;    // 换弹极慢
+        reloadTime     = 4.5f;
         range          = 28f;
-        recoil         = 10f;     // 后坐力极大
+        recoil         = 4f;      // 单发后坐力降低（连射累积仍然很大）
         baseSpread     = 4f;
-        moveSpeedMult  = 0.45f;   // 持枪极慢
+        moveSpeedMult  = 0.45f;
         isSemiAuto     = false;
 
         bulletSpeed    = 26f;
         pelletsPerShot = 1;
+
+        recoilRecoverySpeed = 50f; // 快速恢复，停火后迅速回正
 
         base.Awake();
     }

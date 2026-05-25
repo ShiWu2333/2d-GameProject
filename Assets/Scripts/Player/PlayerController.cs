@@ -26,9 +26,10 @@ public class PlayerController : MonoBehaviour
     public float bodyRotateSpeed = 0f;
 
     // ── 组件引用 ──────────────────────────────────────
-    private Rigidbody2D rb;
-    private PlayerStats stats;
-    private Camera      mainCam;
+    private Rigidbody2D    rb;
+    private PlayerStats    stats;
+    private Camera         mainCam;
+    private ArmorComponent armor;
 
     // ── 当前武器 ──────────────────────────────────────
     private WeaponBase currentWeapon;
@@ -46,7 +47,11 @@ public class PlayerController : MonoBehaviour
     {
         rb      = GetComponent<Rigidbody2D>();
         stats   = GetComponent<PlayerStats>();
+        armor   = GetComponent<ArmorComponent>();
         mainCam = Camera.main;
+
+        if (mainCam == null)
+            Debug.LogWarning("[PlayerController] 找不到 MainCamera，请确保场景中有 Tag=MainCamera 的摄像机");
 
         rb.gravityScale   = 0f;
         rb.freezeRotation = true;
@@ -88,23 +93,27 @@ public class PlayerController : MonoBehaviour
         stats.TickStamina(isSprinting);
     }
 
-    // ── 移动（含持枪移速修正）────────────────────────
+    // ── 移动（含持枪移速修正 + 护甲负面效果）────────
     private void Move()
     {
+        // 基础速度
         float baseSpeed = isSprinting ? sprintSpeed : walkSpeed;
 
-        // 持枪移速修正
+        // 护甲负面效果（移速/奔跑速度惩罚）
+        float armorPenalty = 1f;
+        if (armor != null)
+            armorPenalty = isSprinting ? armor.SprintSpeedPenalty : armor.WalkSpeedPenalty;
+
+        // 武器持枪移速修正
         float weaponMult = 1f;
         if (currentWeapon != null)
         {
             weaponMult = currentWeapon.moveSpeedMult;
-
-            // 持刀额外加成
             if (currentWeapon is Knife)
                 weaponMult *= knifeSpeedBonus;
         }
 
-        rb.velocity = moveInput * baseSpeed * weaponMult;
+        rb.velocity = moveInput * baseSpeed * armorPenalty * weaponMult;
     }
 
     // ── 身体朝向移动方向 ──────────────────────────────
@@ -127,6 +136,8 @@ public class PlayerController : MonoBehaviour
     // ── AimPivot 朝向鼠标 ─────────────────────────────
     private void AimTowardsMouse()
     {
+        if (mainCam == null) return;
+
         Vector3 mouseScreen = Input.mousePosition;
         mouseScreen.z = Mathf.Abs(mainCam.transform.position.z);
         MouseWorldPos = mainCam.ScreenToWorldPoint(mouseScreen);
