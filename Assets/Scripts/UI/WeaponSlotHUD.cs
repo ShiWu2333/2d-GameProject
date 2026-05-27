@@ -55,8 +55,15 @@ public class WeaponSlotHUD : MonoBehaviour
     [Tooltip("直接拖入玩家身上的 WeaponSlotSystem，优先于 Tag 查找")]
     public WeaponSlotSystem slotSystemRef;
 
+    [Header("锁定选中")]
+    public Color lockedColor = new Color(0.2f, 0.8f, 1f, 0.9f); // 锁定时蓝色边框
+
     private WeaponSlotSystem slotSystem;
     private int currentSlotIndex = 0;
+    private int lockedSlotIndex  = -1;  // -1 = 无锁定
+
+    /// <summary>当前锁定的武器槽索引（-1=无）</summary>
+    public int LockedSlotIndex => lockedSlotIndex;
 
     void Start()
     {
@@ -92,8 +99,140 @@ public class WeaponSlotHUD : MonoBehaviour
 
     void Update()
     {
-        // 每帧刷新武器名（武器可能在运行时被装备/卸下）
         RefreshAllSlots();
+        HandleWeaponSlotClick();
+        HandleUnequipInput();
+    }
+
+    // ── 背包打开时左键点击武器栏锁定 ──────────────────
+    private void HandleWeaponSlotClick()
+    {
+        if (!IsInventoryOpen()) return;
+        if (!Input.GetMouseButtonDown(0)) return;
+
+        // 检查鼠标是否点击了某个武器槽格子
+        var eventSystem = UnityEngine.EventSystems.EventSystem.current;
+        if (eventSystem == null) return;
+
+        var pointerData = new UnityEngine.EventSystems.PointerEventData(eventSystem)
+        {
+            position = Input.mousePosition
+        };
+        var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+        eventSystem.RaycastAll(pointerData, results);
+
+        int clickedSlot = -1;
+        foreach (var result in results)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i] == null || slots[i].root == null) continue;
+                if (result.gameObject == slots[i].root ||
+                    result.gameObject.transform.IsChildOf(slots[i].root.transform))
+                {
+                    clickedSlot = i;
+                    break;
+                }
+            }
+            if (clickedSlot >= 0) break;
+        }
+
+        if (clickedSlot >= 0)
+        {
+            // 再次点击同一格取消锁定
+            if (lockedSlotIndex == clickedSlot)
+                UnlockSlot();
+            else
+                LockSlot(clickedSlot);
+        }
+    }
+
+    // ── G键卸下锁定的武器到背包 ──────────────────────
+    private void HandleUnequipInput()
+    {
+        if (!IsInventoryOpen()) return;
+        if (lockedSlotIndex < 0) return;
+        if (!Input.GetKeyDown(KeyCode.G)) return;
+
+        UnequipLockedWeapon();
+    }
+
+    /// <summary>锁定指定武器槽</summary>
+    public void LockSlot(int index)
+    {
+        UnlockSlot(); // 先取消旧锁定
+        lockedSlotIndex = index;
+        // 显示锁定高亮
+        if (index >= 0 && index < slots.Length && slots[index].background != null)
+            slots[index].background.color = lockedColor;
+    }
+
+    /// <summary>取消锁定</summary>
+    public void UnlockSlot()
+    {
+        if (lockedSlotIndex >= 0)
+        {
+            // 恢复正常颜色（下一帧 RefreshAllSlots 会覆盖，这里先手动恢复）
+            lockedSlotIndex = -1;
+        }
+    }
+
+    /// <summary>卸下锁定的武器到背包</summary>
+    private void UnequipLockedWeapon()
+    {
+        if (slotSystem == null) return;
+        var slot = (WeaponSlotSystem.WeaponSlot)lockedSlotIndex;
+        var weapon = slotSystem.GetWeaponInSlot(slot);
+
+        if (weapon == null)
+        {
+            Debug.Log("[WeaponSlotHUD] 该槽位没有武器");
+            UnlockSlot();
+            return;
+        }
+
+        // 放入背包
+        var player = slotSystem.gameObject;
+        var inventory = player.GetComponent<InventorySystem>();
+        if (inventory == null)
+        {
+            Debug.Log("[WeaponSlotHUD] 找不到背包系统");
+            return;
+        }
+
+        var weaponItem = new InventoryItem
+        {
+            itemName  = weapon.weaponName,
+            icon      = null,
+            quantity  = 1,
+            weaponRef = weapon,  // 保存武器引用，丢弃时恢复
+        };
+        if (!inventory.AddItem(weaponItem))
+        {
+            Debug.Log("背包已满，无法卸下武器");
+            return;
+        }
+
+        // 从槽位移除
+        weapon.gameObject.SetActive(false);
+        slotSystem.SetWeaponInSlot(slot, null);
+
+        // 如果卸下的是当前手持，通知 PlayerController
+        if (slot == slotSystem.CurrentSlot)
+        {
+            var pc = player.GetComponent<PlayerController>();
+            if (pc != null) pc.EquipWeapon(null);
+        }
+
+        Debug.Log($"卸下武器到背包：{weapon.weaponName}");
+        UnlockSlot();
+    }
+
+    private bool IsInventoryOpen()
+    {
+        if (slotSystem == null) return false;
+        var inv = slotSystem.GetComponent<InventorySystem>();
+        return inv != null && inv.IsOpen;
     }
 
     // ── 槽位切换回调 ──────────────────────────────────
@@ -109,6 +248,13 @@ public class WeaponSlotHUD : MonoBehaviour
         for (int i = 0; i < slots.Length; i++)
         {
             if (slots[i] == null || slots[i].background == null) continue;
+
+            // 锁定的格子保持锁定颜色
+            if (i == lockedSlotIndex)
+            {
+                slots[i].background.color = lockedColor;
+                continue;
+            }
 
             bool isSelected = (i == selectedIndex);
             bool hasWeapon  = slotSystem != null &&

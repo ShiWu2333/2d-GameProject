@@ -100,13 +100,46 @@ public class PickupWeapon : MonoBehaviour, IInteractable
 
     public void Interact(PlayerInteraction player)
     {
-        InventorySystem inventory = player.GetComponent<InventorySystem>();
-        if (inventory == null) return;
+        if (weapon == null) return;
 
-        inventory.EquipWeapon(weapon);
+        // 使用 WeaponSlotSystem 装备（新系统）
+        var slotSystem = player.GetComponent<WeaponSlotSystem>();
+        if (slotSystem != null)
+        {
+            WeaponSlotSystem.WeaponSlot assignSlot;
+            if (weapon is Knife)
+                assignSlot = WeaponSlotSystem.WeaponSlot.Melee;
+            else if (slotSystem.GetWeaponInSlot(WeaponSlotSystem.WeaponSlot.Primary1) == null)
+                assignSlot = WeaponSlotSystem.WeaponSlot.Primary1;
+            else if (slotSystem.GetWeaponInSlot(WeaponSlotSystem.WeaponSlot.Primary2) == null)
+                assignSlot = WeaponSlotSystem.WeaponSlot.Primary2;
+            else
+            {
+                // 槽位满，放入背包
+                var inv = player.GetComponent<InventorySystem>();
+                if (inv != null)
+                {
+                    var item = new InventoryItem { itemName = weapon.weaponName, quantity = 1, weaponRef = weapon };
+                    inv.AddItem(item);
+                    weapon.gameObject.SetActive(false);
+                }
+                gameObject.SetActive(false);
+                return;
+            }
+
+            slotSystem.SetWeaponInSlot(assignSlot, weapon);
+            var pc = player.GetComponent<PlayerController>();
+            if (pc != null && pc.aimPivot != null)
+            {
+                weapon.transform.SetParent(pc.aimPivot);
+                weapon.transform.localPosition = Vector3.zero;
+                weapon.transform.localRotation = Quaternion.identity;
+            }
+            if (assignSlot != slotSystem.CurrentSlot)
+                weapon.gameObject.SetActive(false);
+        }
+
         Debug.Log($"拾取武器：{weapon.weaponName}");
-
-        // 隐藏地面上的武器图标
         gameObject.SetActive(false);
     }
 

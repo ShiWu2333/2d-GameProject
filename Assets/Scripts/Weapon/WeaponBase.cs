@@ -207,6 +207,17 @@ public abstract class WeaponBase : MonoBehaviour
     public virtual void TryReload()
     {
         if (isReloading || currentAmmo == maxAmmo) return;
+        if (ammoType == AmmoType.None) return; // 刀等无限弹药武器不需要换弹
+
+        // 检查背包中是否有对应弹药
+        var inventory = GetComponentInParent<PlayerController>()
+            ?.GetComponent<InventorySystem>();
+        if (inventory != null && !inventory.HasAmmo(ammoType))
+        {
+            Debug.Log($"[{weaponName}] 没有对应弹药，无法换弹");
+            return;
+        }
+
         StartReload();
     }
 
@@ -220,7 +231,22 @@ public abstract class WeaponBase : MonoBehaviour
 
     protected virtual void FinishReload()
     {
-        currentAmmo = maxAmmo;
+        // 从背包消耗弹药
+        int needed = maxAmmo - currentAmmo;
+        var inventory = GetComponentInParent<PlayerController>()
+            ?.GetComponent<InventorySystem>();
+
+        if (inventory != null && ammoType != AmmoType.None)
+        {
+            int consumed = inventory.ConsumeAmmo(ammoType, needed);
+            currentAmmo += consumed;
+        }
+        else
+        {
+            // 无背包系统时直接满弹（兼容旧逻辑）
+            currentAmmo = maxAmmo;
+        }
+
         isReloading = false;
         canShoot    = true;
         onReloadComplete?.Invoke();

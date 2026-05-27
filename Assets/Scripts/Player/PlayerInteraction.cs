@@ -19,6 +19,9 @@ public class PlayerInteraction : MonoBehaviour
     private IInteractable currentInteractable;
     private bool canInteract;
 
+    /// <summary>是否有可交互目标（供其他系统查询优先级）</summary>
+    public bool CanInteract => canInteract;
+
     // 事件
     public UnityEvent<IInteractable> onInteractableFound;
     public UnityEvent onInteractableLost;
@@ -74,10 +77,14 @@ public class PlayerInteraction : MonoBehaviour
     // ── 处理F键交互 ───────────────────────────────────
     private void HandleInteractionInput()
     {
-        if (canInteract && Input.GetKeyDown(KeyCode.F))
-        {
-            currentInteractable?.Interact(this);
-        }
+        if (!canInteract) return;
+        if (!Input.GetKeyDown(KeyCode.F)) return;
+
+        // 背包打开时不处理场景交互
+        var inv = GetComponent<InventorySystem>();
+        if (inv != null && inv.IsOpen) return;
+
+        currentInteractable?.Interact(this);
     }
 
     // ── 调试绘制 ──────────────────────────────────────

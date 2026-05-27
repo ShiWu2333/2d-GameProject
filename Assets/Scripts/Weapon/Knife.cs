@@ -21,6 +21,13 @@ public class Knife : WeaponBase
     [Tooltip("穿透目标数上限（低级穿透 = 2）")]
     public int maxPenetration = 2;
 
+    [Header("攻击特效")]
+    [Tooltip("挥刀弧形特效预制体（留空则自动生成默认特效）")]
+    public GameObject slashEffectPrefab;
+
+    [Tooltip("特效颜色")]
+    public Color slashColor = new Color(0.9f, 0.95f, 1f, 0.8f);
+
     protected override void Awake()
     {
         weaponName     = "刀";
@@ -44,11 +51,44 @@ public class Knife : WeaponBase
 
     protected override void Shoot()
     {
-        // 刀不发射子弹，直接做扇形范围伤害检测
         fireTimer = fireRate;
         onShoot?.Invoke();
 
+        SpawnSlashEffect();
         MeleeAttack();
+    }
+
+    private void SpawnSlashEffect()
+    {
+        if (firePoint == null) return;
+
+        if (slashEffectPrefab != null)
+        {
+            var inst = Instantiate(slashEffectPrefab, firePoint.position, firePoint.rotation, firePoint);
+            return;
+        }
+
+        // 默认：用 LineRenderer 画弧线特效，挂在 firePoint 下跟随人物
+        var go = new GameObject("SlashFX");
+        go.transform.SetParent(firePoint, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+
+        go.AddComponent<LineRenderer>();
+        var fx = go.AddComponent<SlashEffect>();
+        fx.duration  = 0.15f;
+        fx.arcRadius = attackRadius * 0.9f;
+        fx.arcAngle  = attackAngle;
+        fx.lineWidth = 0.25f;
+        fx.color     = slashColor;
+    }
+
+    /// <summary>运行时生成一个简单的弧形 Sprite（白色半圆）</summary>
+    private static Sprite cachedArcSprite;
+    private static Sprite CreateArcSprite()
+    {
+        // 不再使用，保留空实现避免编译错误
+        return null;
     }
 
     private void MeleeAttack()

@@ -7,10 +7,14 @@ using UnityEngine;
 public class InventorySystem : MonoBehaviour
 {
     [Header("背包容量")]
-    public int maxSlots = 20;                    // 最大格子数
+    public int maxSlots = 9;                     // 默认1行9格
 
     [Header("当前装备")]
-    public WeaponBase equippedWeapon;            // 当前手持武器
+    public WeaponBase equippedWeapon;
+
+    [Header("UI 引用")]
+    [Tooltip("背包 UI 控制器（自动查找或手动赋值）")]
+    public InventoryUI inventoryUI;
 
     // 物品列表
     private List<InventoryItem> items = new List<InventoryItem>();
@@ -33,13 +37,21 @@ public class InventorySystem : MonoBehaviour
         isOpen = !isOpen;
         Debug.Log($"背包 {(isOpen ? "打开" : "关闭")}");
 
-        // 这里可以触发UI显示/隐藏
-        // InventoryUI.Instance?.SetVisible(isOpen);
+        // 显示/隐藏 UI
+        if (inventoryUI != null)
+        {
+            inventoryUI.gameObject.SetActive(isOpen);
+            if (isOpen) inventoryUI.RefreshDisplay();
+        }
     }
 
     // ── 物品管理 ──────────────────────────────────────
     public bool AddItem(InventoryItem item)
     {
+        // 弹药类型：尝试堆叠到已有格子
+        if (item is AmmoItem newAmmo)
+            return AddAmmoItem(newAmmo);
+
         if (items.Count >= maxSlots)
         {
             Debug.Log("背包已满");
@@ -48,17 +60,116 @@ public class InventorySystem : MonoBehaviour
 
         items.Add(item);
         Debug.Log($"获得物品：{item.itemName}");
+        if (inventoryUI != null) inventoryUI.RefreshDisplay();
+        return true;
+    }
+
+    private bool AddAmmoItem(AmmoItem newAmmo)
+    {
+        int remaining = newAmmo.ammoAmount;
+
+        // 先尝试堆叠到已有同类型弹药格子
+        foreach (var item in items)
+        {
+            if (remaining <= 0) break;
+            if (item is AmmoItem existing && existing.ammoType == newAmmo.ammoType)
+            {
+                int canAdd = AmmoItem.MaxPerStack - existing.ammoAmount;
+                if (canAdd > 0)
+                {
+                    int add = Mathf.Min(canAdd, remaining);
+                    existing.ammoAmount += add;
+                    existing.quantity    = existing.ammoAmount; // 同步显示数量
+                    remaining -= add;
+                }
+            }
+        }
+
+        // 剩余的开新格
+        while (remaining > 0)
+        {
+            if (items.Count >= maxSlots)
+            {
+                Debug.Log("背包已满，部分弹药无法放入");
+                break;
+            }
+            int stackAmount = Mathf.Min(remaining, AmmoItem.MaxPerStack);
+            var stack = new AmmoItem
+            {
+                itemName   = newAmmo.itemName,
+                icon       = newAmmo.icon,
+                ammoType   = newAmmo.ammoType,
+                ammoAmount = stackAmount,
+                quantity   = stackAmount,
+            };
+            items.Add(stack);
+            remaining -= stackAmount;
+        }
+
+        if (inventoryUI != null) inventoryUI.RefreshDisplay();
+        Debug.Log($"获得弹药：{newAmmo.itemName} ×{newAmmo.ammoAmount - remaining}");
         return true;
     }
 
     public bool RemoveItem(InventoryItem item)
     {
-        return items.Remove(item);
+        bool removed = items.Remove(item);
+        if (removed && inventoryUI != null) inventoryUI.RefreshDisplay();
+        return removed;
+    }
+
+    /// <summary>按索引移除物品（丢弃用）</summary>
+    public bool RemoveItemAt(int index)
+    {
+        if (index < 0 || index >= items.Count) return false;
+        items.RemoveAt(index);
+        if (inventoryUI != null) inventoryUI.RefreshDisplay();
+        return true;
     }
 
     public bool HasItem(string itemName)
     {
         return items.Exists(i => i.itemName == itemName);
+    }
+
+    // ── 弹药管理 ──────────────────────────────────────
+
+    /// <summary>查询背包中指定类型弹药的总数量</summary>
+    public int GetAmmoCount(AmmoType ammoType)
+    {
+        int total = 0;
+        foreach (var item in items)
+        {
+            if (item is AmmoItem ammo && ammo.ammoType == ammoType.ToString())
+                total += ammo.ammoAmount;
+        }
+        return total;
+    }
+
+    /// <summary>消耗指定类型弹药，返回实际消耗数量</summary>
+    public int ConsumeAmmo(AmmoType ammoType, int amount)
+    {
+        int remaining = amount;
+        for (int i = items.Count - 1; i >= 0 && remaining > 0; i--)
+        {
+            if (items[i] is AmmoItem ammo && ammo.ammoType == ammoType.ToString())
+            {
+                int take = Mathf.Min(ammo.ammoAmount, remaining);
+                ammo.ammoAmount -= take;
+                remaining -= take;
+
+                if (ammo.ammoAmount <= 0)
+                    items.RemoveAt(i);
+            }
+        }
+        if (inventoryUI != null) inventoryUI.RefreshDisplay();
+        return amount - remaining;
+    }
+
+    /// <summary>检查是否有足够弹药换弹</summary>
+    public bool HasAmmo(AmmoType ammoType)
+    {
+        return GetAmmoCount(ammoType) > 0;
     }
 
     // ── 武器装备 ──────────────────────────────────────
@@ -92,6 +203,10 @@ public class InventoryItem
     public Sprite icon;
     public int quantity = 1;
 
+    /// <summary>如果此物品是武器，存储武器 GameObject 引用（用于丢弃时恢复）</summary>
+    [System.NonSerialized]
+    public WeaponBase weaponRef;
+
     public virtual void Use(PlayerController player)
     {
         Debug.Log($"使用物品：{itemName}");
@@ -104,6 +219,8 @@ public class InventoryItem
 [System.Serializable]
 public class AmmoItem : InventoryItem
 {
-    public string ammoType;  // 对应武器类型
-    public int ammoAmount = 30;
+    public string ammoType;       // 对应武器类型（如 "SMG"、"Rifle"）
+    public int ammoAmount = 60;   // 当前弹药数量（每格上限60）
+
+    public const int MaxPerStack = 60;  // 每格最大堆叠数
 }

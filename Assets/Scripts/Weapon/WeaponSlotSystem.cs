@@ -52,17 +52,85 @@ public class WeaponSlotSystem : MonoBehaviour
     void Update()
     {
         HandleSlotInput();
+        HandleDropInput();
     }
 
     // ── 按键检测 ──────────────────────────────────────
     private void HandleSlotInput()
     {
+        // 死亡或背包打开时不允许切换武器
+        var stats = GetComponent<PlayerStats>();
+        if (stats != null && !stats.IsAlive) return;
+        var inv = GetComponent<InventorySystem>();
+        if (inv != null && inv.IsOpen) return;
+
         if (Input.GetKeyDown(KeyCode.Alpha1))
             SwitchToSlot(WeaponSlot.Primary1);
         else if (Input.GetKeyDown(KeyCode.Alpha2))
             SwitchToSlot(WeaponSlot.Primary2);
         else if (Input.GetKeyDown(KeyCode.Alpha3))
             SwitchToSlot(WeaponSlot.Melee);
+    }
+
+    // ── G键丢弃当前主手武器 ───────────────────────────
+    private void HandleDropInput()
+    {
+        // 背包打开时G键由背包/武器栏HUD处理
+        var inv = GetComponent<InventorySystem>();
+        if (inv != null && inv.IsOpen) return;
+
+        if (Input.GetKeyDown(KeyCode.G))
+            DropCurrentWeapon();
+    }
+
+    /// <summary>丢弃当前手持武器</summary>
+    public void DropCurrentWeapon()
+    {
+        if (CurrentWeapon == null)
+        {
+            Debug.Log("[WeaponSlotSystem] 当前槽位没有武器");
+            return;
+        }
+
+        WeaponBase dropped = CurrentWeapon;
+        WeaponSlot droppedSlot = CurrentSlot;
+
+        dropped.OnDrop();
+        dropped.gameObject.SetActive(true);
+
+        // 丢到玩家前方
+        Vector2 dropDir = transform.right;
+        if (playerController != null && playerController.aimPivot != null)
+            dropDir = playerController.aimPivot.right;
+        dropped.transform.position = (Vector2)transform.position + dropDir * 1.5f;
+
+        // 添加 GroundItem 组件使其成为可拾取散落物
+        var groundItem = dropped.gameObject.GetComponent<GroundItem>();
+        if (groundItem == null)
+            groundItem = dropped.gameObject.AddComponent<GroundItem>();
+        groundItem.itemType    = GroundItem.GroundItemType.Weapon;
+        groundItem.weapon      = dropped;
+        groundItem.targetSlot  = droppedSlot;
+        groundItem.displayName = dropped.weaponName;
+
+        // 确保有碰撞体（拾取检测用）
+        var col = dropped.gameObject.GetComponent<Collider2D>();
+        if (col != null) col.isTrigger = true;
+
+        // 清空槽位
+        switch (CurrentSlot)
+        {
+            case WeaponSlot.Primary1: primary1 = null; break;
+            case WeaponSlot.Primary2: primary2 = null; break;
+            case WeaponSlot.Melee:    melee    = null; break;
+        }
+
+        CurrentWeapon = null;
+        if (playerController != null)
+            playerController.EquipWeapon(null);
+
+        onSlotChanged?.Invoke((int)CurrentSlot);
+        Debug.Log($"丢弃武器：{dropped.weaponName}");
     }
 
     // ── 切换槽位 ──────────────────────────────────────

@@ -64,6 +64,13 @@ public class PlayerController : MonoBehaviour
     {
         if (!stats.IsAlive) return;
 
+        // 背包打开时禁止移动和射击，只允许背包操作
+        if (IsInventoryOpen())
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
         GatherInput();
         AimTowardsMouse();
         RotateBodyToMovement();
@@ -73,7 +80,14 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         if (!stats.IsAlive) return;
+        if (IsInventoryOpen()) return;
         Move();
+    }
+
+    private bool IsInventoryOpen()
+    {
+        var inv = GetComponent<InventorySystem>();
+        return inv != null && inv.IsOpen;
     }
 
     // ── 输入收集 ──────────────────────────────────────
@@ -147,12 +161,8 @@ public class PlayerController : MonoBehaviour
         Vector2 dir   = MouseWorldPos - (Vector2)transform.position;
         float   angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
-        // 基础朝向
-        Quaternion baseRot = Quaternion.Euler(0f, 0f, angle);
-
-        // 叠加后坐力偏移（向上偏移，模拟枪口上扬）
-        float recoilOffset = currentWeapon != null ? currentWeapon.CurrentRecoilAngle : 0f;
-        aimPivot.rotation = baseRot * Quaternion.Euler(0f, 0f, recoilOffset);
+        // AimPivot 始终精确指向鼠标，后坐力只通过散射影响子弹方向
+        aimPivot.rotation = Quaternion.Euler(0f, 0f, angle);
     }
 
     // ── 武器输入 ──────────────────────────────────────

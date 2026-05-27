@@ -15,7 +15,7 @@ public class MarksmanRifle : WeaponBase
         ammoType       = AmmoType.Rifle;
 
         damage         = 45f;
-        fireRate       = 0.35f;   // ~2.9发/秒
+        fireRate       = 0.2f;    // ~5发/秒
         maxAmmo        = 15;
         reloadTime     = 2.8f;
         range          = 40f;
