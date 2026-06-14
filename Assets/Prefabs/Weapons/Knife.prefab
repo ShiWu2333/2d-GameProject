@@ -282,6 +282,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   maxPenetration: 2
+  slashEffectPrefab: {fileID: 0}
+  slashColor: {r: 0.9, g: 0.95, b: 1, a: 0.8}
 --- !u!61 &3397994074480291893
 BoxCollider2D:
   m_ObjectHideFlags: 0
