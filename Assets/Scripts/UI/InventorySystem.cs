@@ -24,8 +24,8 @@ public class InventorySystem : MonoBehaviour
 
     void Update()
     {
-        // M键开关背包
-        if (Input.GetKeyDown(KeyCode.M))
+        KeyCode invKey = KeyBindings.Instance != null ? KeyBindings.Instance.inventory : KeyCode.M;
+        if (Input.GetKeyDown(invKey))
         {
             ToggleInventory();
         }

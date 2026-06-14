@@ -93,12 +93,26 @@ public class PlayerController : MonoBehaviour
     // ── 输入收集 ──────────────────────────────────────
     private void GatherInput()
     {
-        moveInput = new Vector2(
-            Input.GetAxisRaw("Horizontal"),
-            Input.GetAxisRaw("Vertical")
-        ).normalized;
+        var kb = KeyBindings.Instance;
 
-        isSprinting = Input.GetKey(KeyCode.LeftShift)
+        // 移动输入（支持自定义按键）
+        float h = 0f, v = 0f;
+        if (kb != null)
+        {
+            if (Input.GetKey(kb.moveRight)) h += 1f;
+            if (Input.GetKey(kb.moveLeft))  h -= 1f;
+            if (Input.GetKey(kb.moveUp))    v += 1f;
+            if (Input.GetKey(kb.moveDown))  v -= 1f;
+        }
+        else
+        {
+            h = Input.GetAxisRaw("Horizontal");
+            v = Input.GetAxisRaw("Vertical");
+        }
+        moveInput = new Vector2(h, v).normalized;
+
+        KeyCode sprintKey = kb != null ? kb.sprint : KeyCode.LeftShift;
+        isSprinting = Input.GetKey(sprintKey)
                       && moveInput.sqrMagnitude > 0f
                       && stats.HasStamina;
 
@@ -170,10 +184,10 @@ public class PlayerController : MonoBehaviour
     {
         if (currentWeapon == null) return;
 
-        // 传入当前帧扳机状态（支持全自动/半自动）
         currentWeapon.TryShoot(triggerHeld);
 
-        if (Input.GetKeyDown(KeyCode.R))
+        KeyCode reloadKey = KeyBindings.Instance != null ? KeyBindings.Instance.reload : KeyCode.R;
+        if (Input.GetKeyDown(reloadKey))
             currentWeapon.TryReload();
     }
 

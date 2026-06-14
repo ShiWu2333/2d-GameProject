@@ -67,7 +67,8 @@ public class PickupSystem : MonoBehaviour
 
     private void HandlePickupInput()
     {
-        if (!Input.GetKeyDown(KeyCode.F)) return;
+        KeyCode interactKey = KeyBindings.Instance != null ? KeyBindings.Instance.interact : KeyCode.F;
+        if (!Input.GetKeyDown(interactKey)) return;
         if (nearbyItems.Count == 0) return;
 
         // 背包打开时F键由InventoryUI处理（装备武器）

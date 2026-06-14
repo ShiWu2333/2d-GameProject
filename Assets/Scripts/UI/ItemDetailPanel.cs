@@ -64,6 +64,17 @@ public class ItemDetailPanel : MonoBehaviour
             if (ammoPenetrationText != null) ammoPenetrationText.text = $"弹药类型：{ammo.ammoType}";
             if (descriptionText != null) descriptionText.text = $"{ammo.itemName}";
         }
+        else if (item is MedicalItem med)
+        {
+            // 医疗物品
+            if (weaponStatsGroup != null) weaponStatsGroup.SetActive(false);
+            if (ammoStatsGroup != null) ammoStatsGroup.SetActive(false);
+            string durInfo = med.isSingleUse
+                ? $"一次性（剩余 {med.quantity}）"
+                : $"耐久：{med.currentDurability:F0} / {med.maxDurability:F0}";
+            if (descriptionText != null)
+                descriptionText.text = $"{med.description}\n\n回复血量：{med.healAmount:F0}\n{durInfo}\n\n[右键使用]";
+        }
         else
         {
             // 普通物品

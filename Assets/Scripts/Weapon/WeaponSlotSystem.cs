@@ -64,11 +64,16 @@ public class WeaponSlotSystem : MonoBehaviour
         var inv = GetComponent<InventorySystem>();
         if (inv != null && inv.IsOpen) return;
 
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        var kb = KeyBindings.Instance;
+        KeyCode k1 = kb != null ? kb.weapon1 : KeyCode.Alpha1;
+        KeyCode k2 = kb != null ? kb.weapon2 : KeyCode.Alpha2;
+        KeyCode k3 = kb != null ? kb.weapon3 : KeyCode.Alpha3;
+
+        if (Input.GetKeyDown(k1))
             SwitchToSlot(WeaponSlot.Primary1);
-        else if (Input.GetKeyDown(KeyCode.Alpha2))
+        else if (Input.GetKeyDown(k2))
             SwitchToSlot(WeaponSlot.Primary2);
-        else if (Input.GetKeyDown(KeyCode.Alpha3))
+        else if (Input.GetKeyDown(k3))
             SwitchToSlot(WeaponSlot.Melee);
     }
 
@@ -79,7 +84,8 @@ public class WeaponSlotSystem : MonoBehaviour
         var inv = GetComponent<InventorySystem>();
         if (inv != null && inv.IsOpen) return;
 
-        if (Input.GetKeyDown(KeyCode.G))
+        KeyCode dropKey = KeyBindings.Instance != null ? KeyBindings.Instance.dropWeapon : KeyCode.G;
+        if (Input.GetKeyDown(dropKey))
             DropCurrentWeapon();
     }
 

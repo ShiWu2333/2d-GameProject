@@ -71,8 +71,12 @@ public class InventoryUI : MonoBehaviour
 
     void Update()
     {
+        var kb = KeyBindings.Instance;
+        KeyCode dropKey    = kb != null ? kb.dropWeapon : KeyCode.G;
+        KeyCode interactKey = kb != null ? kb.interact  : KeyCode.F;
+
         // G键丢弃选中物品（背包打开时，且武器栏没有锁定）
-        if (Input.GetKeyDown(KeyCode.G) && selectedSlotIndex >= 0)
+        if (Input.GetKeyDown(dropKey) && selectedSlotIndex >= 0)
         {
             var weaponHUD = Object.FindFirstObjectByType<WeaponSlotHUD>();
             if (weaponHUD != null && weaponHUD.LockedSlotIndex >= 0)
@@ -82,9 +86,15 @@ public class InventoryUI : MonoBehaviour
         }
 
         // F键装备选中的武器（背包打开时）
-        if (Input.GetKeyDown(KeyCode.F) && selectedSlotIndex >= 0)
+        if (Input.GetKeyDown(interactKey) && selectedSlotIndex >= 0)
         {
             EquipSelectedWeapon();
+        }
+
+        // 鼠标右键使用选中物品（医疗品等）
+        if (Input.GetMouseButtonDown(1) && selectedSlotIndex >= 0)
+        {
+            UseSelectedItem();
         }
     }
 
@@ -272,6 +282,45 @@ public class InventoryUI : MonoBehaviour
 
         Debug.Log($"从背包装备武器：{weapon.weaponName} → {assignSlot}");
         DeselectAll();
+        RefreshDisplay();
+    }
+
+    /// <summary>使用选中的物品（医疗品等）</summary>
+    private void UseSelectedItem()
+    {
+        if (inventorySystem == null) return;
+        var items = inventorySystem.GetItems();
+
+        if (selectedSlotIndex < 0 || selectedSlotIndex >= items.Count)
+            return;
+
+        var item = items[selectedSlotIndex];
+        var player = inventorySystem.GetComponent<PlayerController>();
+        if (player == null) return;
+
+        // 调用物品的 Use 方法
+        item.Use(player);
+
+        // 检查是否需要移除（一次性物品用完 / 耐久耗尽）
+        if (item is MedicalItem med)
+        {
+            if (med.isSingleUse && med.quantity <= 0)
+            {
+                inventorySystem.RemoveItemAt(selectedSlotIndex);
+                DeselectAll();
+            }
+            else if (!med.isSingleUse && !med.CanUse())
+            {
+                inventorySystem.RemoveItemAt(selectedSlotIndex);
+                DeselectAll();
+            }
+        }
+        else if (item.quantity <= 0)
+        {
+            inventorySystem.RemoveItemAt(selectedSlotIndex);
+            DeselectAll();
+        }
+
         RefreshDisplay();
     }
 

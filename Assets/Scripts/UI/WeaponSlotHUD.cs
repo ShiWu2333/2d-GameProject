@@ -152,7 +152,9 @@ public class WeaponSlotHUD : MonoBehaviour
     {
         if (!IsInventoryOpen()) return;
         if (lockedSlotIndex < 0) return;
-        if (!Input.GetKeyDown(KeyCode.G)) return;
+
+        KeyCode dropKey = KeyBindings.Instance != null ? KeyBindings.Instance.dropWeapon : KeyCode.G;
+        if (!Input.GetKeyDown(dropKey)) return;
 
         UnequipLockedWeapon();
     }

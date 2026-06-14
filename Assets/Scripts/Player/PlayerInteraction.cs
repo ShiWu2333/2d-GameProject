@@ -78,7 +78,9 @@ public class PlayerInteraction : MonoBehaviour
     private void HandleInteractionInput()
     {
         if (!canInteract) return;
-        if (!Input.GetKeyDown(KeyCode.F)) return;
+
+        KeyCode interactKey = KeyBindings.Instance != null ? KeyBindings.Instance.interact : KeyCode.F;
+        if (!Input.GetKeyDown(interactKey)) return;
 
         // 背包打开时不处理场景交互
         var inv = GetComponent<InventorySystem>();
