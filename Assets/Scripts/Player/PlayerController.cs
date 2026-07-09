@@ -38,9 +38,13 @@ public class PlayerController : MonoBehaviour
     private Vector2 moveInput;
     private bool    isSprinting;
     private bool    triggerHeld;
+    private bool    isAiming;
 
     /// <summary>鼠标世界坐标（供其他脚本读取）</summary>
     public Vector2 MouseWorldPos { get; private set; }
+
+    /// <summary>是否正在瞄准</summary>
+    public bool IsAiming => isAiming;
 
     // ══════════════════════════════════════════════════
     void Awake()
@@ -114,9 +118,20 @@ public class PlayerController : MonoBehaviour
         KeyCode sprintKey = kb != null ? kb.sprint : KeyCode.LeftShift;
         isSprinting = Input.GetKey(sprintKey)
                       && moveInput.sqrMagnitude > 0f
-                      && stats.HasStamina;
+                      && stats.HasStamina
+                      && !triggerHeld   // 射击时无法冲刺
+                      && !isAiming;     // 瞄准时无法冲刺
 
         triggerHeld = Input.GetMouseButton(0);
+
+        // 右键瞄准（仅持枪时有效，刀无瞄准）
+        isAiming = Input.GetMouseButton(1)
+                   && currentWeapon != null
+                   && !(currentWeapon is Knife);
+
+        // 同步瞄准状态到武器
+        if (currentWeapon != null)
+            currentWeapon.IsAiming = isAiming;
 
         stats.TickStamina(isSprinting);
     }
@@ -139,6 +154,9 @@ public class PlayerController : MonoBehaviour
             weaponMult = currentWeapon.moveSpeedMult;
             if (currentWeapon is Knife)
                 weaponMult *= knifeSpeedBonus;
+            // 瞄准时额外减速
+            if (isAiming)
+                weaponMult *= currentWeapon.aimMoveSpeedMult;
         }
 
         rb.velocity = moveInput * baseSpeed * armorPenalty * weaponMult;

@@ -66,9 +66,13 @@ public class InventorySystem : MonoBehaviour
 
     private bool AddAmmoItem(AmmoItem newAmmo)
     {
+        // 确保弹药物品有图标
+        if (newAmmo.icon == null)
+            newAmmo.icon = AmmoIconManager.GetAmmoIcon(newAmmo.ammoType, newAmmo.isHighGrade);
+
         int remaining = newAmmo.ammoAmount;
 
-        // 先尝试堆叠到已有同类型弹药格子
+        // 先尝试堆叠到已有同类型弹药格子（同一弹药类型共用一格）
         foreach (var item in items)
         {
             if (remaining <= 0) break;
@@ -96,12 +100,17 @@ public class InventorySystem : MonoBehaviour
             int stackAmount = Mathf.Min(remaining, AmmoItem.MaxPerStack);
             var stack = new AmmoItem
             {
-                itemName   = newAmmo.itemName,
-                icon       = newAmmo.icon,
-                ammoType   = newAmmo.ammoType,
-                ammoAmount = stackAmount,
-                quantity   = stackAmount,
+                itemName    = newAmmo.itemName,
+                icon        = newAmmo.icon,
+                ammoType    = newAmmo.ammoType,
+                ammoData    = newAmmo.ammoData,
+                isHighGrade = newAmmo.isHighGrade,
+                ammoAmount  = stackAmount,
+                quantity    = stackAmount,
             };
+            // 确保图标存在
+            if (stack.icon == null)
+                stack.icon = AmmoIconManager.GetAmmoIcon(stack.ammoType, stack.isHighGrade);
             items.Add(stack);
             remaining -= stackAmount;
         }
@@ -140,7 +149,19 @@ public class InventorySystem : MonoBehaviour
         int total = 0;
         foreach (var item in items)
         {
-            if (item is AmmoItem ammo && ammo.ammoType == ammoType.ToString())
+            if (item is AmmoItem ammo && ammo.ammoType == ammoType)
+                total += ammo.ammoAmount;
+        }
+        return total;
+    }
+    
+    /// <summary>查询背包中指定类型和等级弹药的总数量</summary>
+    public int GetAmmoCount(AmmoType ammoType, bool isHighGrade)
+    {
+        int total = 0;
+        foreach (var item in items)
+        {
+            if (item is AmmoItem ammo && ammo.ammoType == ammoType && ammo.isHighGrade == isHighGrade)
                 total += ammo.ammoAmount;
         }
         return total;
@@ -149,27 +170,60 @@ public class InventorySystem : MonoBehaviour
     /// <summary>消耗指定类型弹药，返回实际消耗数量</summary>
     public int ConsumeAmmo(AmmoType ammoType, int amount)
     {
+        return ConsumeAmmo(ammoType, amount, false); // 默认消耗低级弹药
+    }
+    
+    /// <summary>消耗指定类型和等级的弹药，返回实际消耗数量</summary>
+    public int ConsumeAmmo(AmmoType ammoType, int amount, bool preferHighGrade)
+    {
+        int remaining = amount;
+        
+        // 如果有高级弹药偏好，先尝试消耗高级弹药
+        if (preferHighGrade)
+        {
+            remaining = ConsumeAmmoByGrade(ammoType, remaining, true);
+        }
+        
+        // 消耗低级弹药（或如果高级弹药不足）
+        if (remaining > 0)
+        {
+            remaining = ConsumeAmmoByGrade(ammoType, remaining, false);
+        }
+        
+        if (inventoryUI != null) inventoryUI.RefreshDisplay();
+        return amount - remaining;
+    }
+    
+    /// <summary>按等级消耗弹药</summary>
+    private int ConsumeAmmoByGrade(AmmoType ammoType, int amount, bool isHighGrade)
+    {
         int remaining = amount;
         for (int i = items.Count - 1; i >= 0 && remaining > 0; i--)
         {
-            if (items[i] is AmmoItem ammo && ammo.ammoType == ammoType.ToString())
+            if (items[i] is AmmoItem ammo && ammo.ammoType == ammoType && ammo.isHighGrade == isHighGrade)
             {
                 int take = Mathf.Min(ammo.ammoAmount, remaining);
                 ammo.ammoAmount -= take;
+                ammo.quantity = ammo.ammoAmount; // 更新显示数量
                 remaining -= take;
 
                 if (ammo.ammoAmount <= 0)
                     items.RemoveAt(i);
             }
         }
-        if (inventoryUI != null) inventoryUI.RefreshDisplay();
-        return amount - remaining;
+        return remaining;
     }
 
     /// <summary>检查是否有足够弹药换弹</summary>
     public bool HasAmmo(AmmoType ammoType)
     {
         return GetAmmoCount(ammoType) > 0;
+    }
+    
+    /// <summary>检查是否有指定等级的弹药</summary>
+    public bool HasAmmo(AmmoType ammoType, bool isHighGrade)
+    {
+        return GetAmmoCount(ammoType, isHighGrade) > 0;
     }
 
     // ── 武器装备 ──────────────────────────────────────
@@ -219,8 +273,57 @@ public class InventoryItem
 [System.Serializable]
 public class AmmoItem : InventoryItem
 {
-    public string ammoType;       // 对应武器类型（如 "SMG"、"Rifle"）
-    public int ammoAmount = 60;   // 当前弹药数量（每格上限60）
-
-    public const int MaxPerStack = 60;  // 每格最大堆叠数
+    public AmmoType ammoType;          // 弹药类型枚举
+    public AmmoData ammoData;          // 弹药数据引用（可选）
+    public int ammoAmount = 60;        // 当前弹药数量（每格上限60）
+    public bool isHighGrade = false;   // 是否为高级弹药
+    
+    public const int MaxPerStack = 60; // 每格最大堆叠数
+    
+    /// <summary>
+    /// 使用弹药（装备到武器）
+    /// </summary>
+    public override void Use(PlayerController player)
+    {
+        if (player == null) return;
+        
+        var weaponSystem = player.GetComponent<WeaponSlotSystem>();
+        if (weaponSystem == null || weaponSystem.CurrentWeapon == null)
+        {
+            Debug.Log("没有装备武器，无法使用弹药");
+            return;
+        }
+        
+        var currentWeapon = weaponSystem.CurrentWeapon;
+        
+        // 检查弹药类型是否匹配
+        if (currentWeapon.ammoType != ammoType)
+        {
+            Debug.Log($"弹药类型不匹配！武器需要 {currentWeapon.ammoType}，当前是 {ammoType}");
+            return;
+        }
+        
+        // 设置武器的弹药数据
+        if (ammoData != null)
+        {
+            currentWeapon.currentAmmoData = ammoData;
+            Debug.Log($"已将 {itemName} 装备到 {currentWeapon.weaponName}");
+        }
+        else
+        {
+            Debug.Log($"弹药 {itemName} 没有弹药数据");
+        }
+    }
+    
+    /// <summary>
+    /// 获取弹药的显示名称
+    /// </summary>
+    public string GetDisplayName()
+    {
+        if (ammoData != null)
+            return ammoData.ammoName;
+        
+        string grade = isHighGrade ? "高级" : "低级";
+        return $"{ammoType.ToString()}弹药（{grade}）";
+    }
 }

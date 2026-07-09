@@ -20,7 +20,10 @@ public class SMG : WeaponBase
         range          = 12f;
         recoil         = 1.8f;
         baseSpread     = 3f;
+        moveSpreadBonus= 3.5f;    // 移动散射中等
         moveSpeedMult  = 0.90f;   // 持枪移速快
+        aimSpreadMult  = 0.35f;   // 瞄准精准度中等
+        aimMoveSpeedMult= 0.5f;   // 瞄准移速中等
         isSemiAuto     = false;
 
         bulletSpeed    = 18f;

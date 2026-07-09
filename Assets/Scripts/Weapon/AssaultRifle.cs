@@ -20,7 +20,10 @@ public class AssaultRifle : WeaponBase
         range          = 25f;
         recoil         = 3f;
         baseSpread     = 2f;
+        moveSpreadBonus= 3f;      // 移动散射中等
         moveSpeedMult  = 0.80f;
+        aimSpreadMult  = 0.25f;   // 瞄准精准度较高
+        aimMoveSpeedMult= 0.4f;   // 瞄准时移速较慢
         isSemiAuto     = false;
 
         bulletSpeed    = 24f;

@@ -12,7 +12,11 @@ public static class SettingsPanelSetup
     [MenuItem("Tools/搭建设置面板")]
     public static void Setup()
     {
+#if UNITY_2023_1_OR_NEWER
         var canvas = Object.FindFirstObjectByType<Canvas>();
+#else
+        var canvas = Object.FindObjectOfType<Canvas>();
+#endif
         if (canvas == null) { Debug.LogError("没有Canvas"); return; }
 
         // ── KeyBindings 单例 ──────────────────────────

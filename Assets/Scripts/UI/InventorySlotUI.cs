@@ -54,6 +54,12 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler
     {
         if (background != null) background.color = bgColor;
 
+        // 如果是弹药物品且图标为空，自动生成图标
+        if (item.icon == null && item is AmmoItem ammo)
+        {
+            item.icon = AmmoIconManager.GetAmmoIcon(ammo.ammoType, ammo.isHighGrade);
+        }
+
         if (iconImage != null)
         {
             if (item.icon != null)

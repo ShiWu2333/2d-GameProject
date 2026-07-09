@@ -78,7 +78,7 @@ public class InventoryUI : MonoBehaviour
         // G键丢弃选中物品（背包打开时，且武器栏没有锁定）
         if (Input.GetKeyDown(dropKey) && selectedSlotIndex >= 0)
         {
-            var weaponHUD = Object.FindFirstObjectByType<WeaponSlotHUD>();
+            var weaponHUD = FindObjectOfType<WeaponSlotHUD>();
             if (weaponHUD != null && weaponHUD.LockedSlotIndex >= 0)
                 return;
 
@@ -364,6 +364,12 @@ public class InventoryUI : MonoBehaviour
         var go = new GameObject($"DroppedItem_{item.itemName}");
         go.transform.position = dropPos;
 
+        // 确保弹药物品有图标
+        if (item.icon == null && item is AmmoItem droppedAmmo)
+        {
+            item.icon = AmmoIconManager.GetAmmoIcon(droppedAmmo.ammoType, droppedAmmo.isHighGrade);
+        }
+
         var sr = go.AddComponent<SpriteRenderer>();
         if (item.icon != null)
         {
@@ -382,8 +388,17 @@ public class InventoryUI : MonoBehaviour
         newCol.isTrigger = true;
 
         var newGi = go.AddComponent<GroundItem>();
-        newGi.itemType    = GroundItem.GroundItemType.Item;
-        newGi.item        = item;
+        // 弹药物品使用Ammo类型
+        if (item is AmmoItem ammoDropped)
+        {
+            newGi.itemType    = GroundItem.GroundItemType.Ammo;
+            newGi.ammoItem    = ammoDropped;
+        }
+        else
+        {
+            newGi.itemType    = GroundItem.GroundItemType.Item;
+            newGi.item        = item;
+        }
         newGi.displayIcon = item.icon;
         newGi.displayName = item.itemName;
     }

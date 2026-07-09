@@ -206,7 +206,11 @@ public static class ArmorDataCreator
         if (player == null)
         {
             // 找不到Tag时尝试按名字查找
+#if UNITY_2023_1_OR_NEWER
             var allGOs = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+#else
+            var allGOs = Object.FindObjectsOfType<GameObject>();
+#endif
             foreach (var go in allGOs)
             {
                 if (go.name.ToLower().Contains("player") && go.GetComponent<PlayerController>() != null)

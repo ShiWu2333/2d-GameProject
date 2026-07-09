@@ -17,7 +17,11 @@ public static class ItemDetailPanelSetup
         if (invPanel == null)
         {
             // Find 找不到未激活对象，遍历 Canvas 子物体查找
+#if UNITY_2023_1_OR_NEWER
             var canvasSearch = Object.FindFirstObjectByType<Canvas>();
+#else
+            var canvasSearch = Object.FindObjectOfType<Canvas>();
+#endif
             if (canvasSearch != null)
             {
                 var tf = canvasSearch.transform.Find("InventoryPanel");

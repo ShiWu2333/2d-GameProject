@@ -95,6 +95,10 @@ public class PickupSystem : MonoBehaviour
         {
             PickupWeapon(target);
         }
+        else if (target.itemType == GroundItem.GroundItemType.Ammo)
+        {
+            PickupAmmo(target);
+        }
         else
         {
             PickupItem(target);
@@ -108,12 +112,58 @@ public class PickupSystem : MonoBehaviour
     {
         if (inventory != null && target.item != null)
         {
+            // 确保物品有图标
+            if (target.item.icon == null && target.item is AmmoItem ammoItem)
+            {
+                ammoItem.icon = AmmoIconManager.GetAmmoIcon(ammoItem.ammoType, ammoItem.isHighGrade);
+            }
+
             if (!inventory.AddItem(target.item))
             {
                 Debug.Log("背包已满，无法拾取");
                 return;
             }
         }
+        target.OnPickedUp();
+    }
+
+    private void PickupAmmo(GroundItem target)
+    {
+        if (inventory == null) return;
+
+        // 优先使用GroundItem上的ammoItem
+        AmmoItem ammo = target.ammoItem;
+
+        // 如果ammoItem为空，尝试从AmmoItemData组件获取
+        if (ammo == null)
+        {
+            var ammoData = target.GetComponent<AmmoItemData>();
+            if (ammoData != null)
+                ammo = ammoData.ammoItem;
+        }
+
+        // 如果仍为空，尝试从普通item字段获取
+        if (ammo == null && target.item is AmmoItem existingAmmo)
+        {
+            ammo = existingAmmo;
+        }
+
+        if (ammo == null)
+        {
+            Debug.LogWarning("[PickupSystem] 弹药物品数据为空");
+            return;
+        }
+
+        // 确保图标存在
+        if (ammo.icon == null)
+            ammo.icon = AmmoIconManager.GetAmmoIcon(ammo.ammoType, ammo.isHighGrade);
+
+        if (!inventory.AddItem(ammo))
+        {
+            Debug.Log("背包已满，无法拾取弹药");
+            return;
+        }
+
         target.OnPickedUp();
     }
 

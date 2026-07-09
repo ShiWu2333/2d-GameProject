@@ -14,7 +14,11 @@ public static class InventoryUISetup
     public static void Setup()
     {
         // 找 Canvas
+#if UNITY_2023_1_OR_NEWER
         var canvas = Object.FindFirstObjectByType<Canvas>();
+#else
+        var canvas = Object.FindObjectOfType<Canvas>();
+#endif
         if (canvas == null)
         {
             Debug.LogError("[InventoryUISetup] 场景中没有 Canvas");
@@ -26,7 +30,11 @@ public static class InventoryUISetup
             Undo.AddComponent<GraphicRaycaster>(canvas.gameObject);
 
         // 确保场景有 EventSystem（UI点击必须）
+#if UNITY_2023_1_OR_NEWER
         if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+#else
+        if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+#endif
         {
             var esGO = new GameObject("EventSystem");
             Undo.RegisterCreatedObjectUndo(esGO, "Create EventSystem");

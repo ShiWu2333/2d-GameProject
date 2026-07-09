@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 地面物品/武器组件
 /// 挂在场景中可拾取的物品 GameObject 上
-/// 支持普通物品和武器两种类型
+/// 支持普通物品、武器和弹药三种类型
 /// </summary>
 public class GroundItem : MonoBehaviour
 {
@@ -11,10 +11,15 @@ public class GroundItem : MonoBehaviour
     {
         Item,    // 普通物品（放入背包）
         Weapon,  // 武器（装备到武器槽）
+        Ammo,    // 弹药（放入背包的弹药栏）
     }
 
     [Header("类型")]
     public GroundItemType itemType = GroundItemType.Item;
+
+    [Header("弹药数据（itemType = Ammo 时使用）")]
+    [Tooltip("弹药物品数据")]
+    public AmmoItem ammoItem;
 
     [Header("普通物品数据（itemType = Item 时使用）")]
     public InventoryItem item;
@@ -37,8 +42,20 @@ public class GroundItem : MonoBehaviour
     public string GetDisplayName()
     {
         if (!string.IsNullOrEmpty(displayName)) return displayName;
-        if (itemType == GroundItemType.Weapon && weapon != null) return weapon.weaponName;
-        if (item != null) return item.itemName;
+        
+        switch (itemType)
+        {
+            case GroundItemType.Weapon:
+                if (weapon != null) return weapon.weaponName;
+                break;
+            case GroundItemType.Item:
+                if (item != null) return item.itemName;
+                break;
+            case GroundItemType.Ammo:
+                if (ammoItem != null) return ammoItem.GetDisplayName();
+                break;
+        }
+        
         return "???";
     }
 
@@ -46,7 +63,17 @@ public class GroundItem : MonoBehaviour
     public Sprite GetDisplayIcon()
     {
         if (displayIcon != null) return displayIcon;
-        if (item != null) return item.icon;
+        
+        switch (itemType)
+        {
+            case GroundItemType.Item:
+                if (item != null) return item.icon;
+                break;
+            case GroundItemType.Ammo:
+                // 可以为弹药设置默认图标
+                break;
+        }
+        
         return null;
     }
 

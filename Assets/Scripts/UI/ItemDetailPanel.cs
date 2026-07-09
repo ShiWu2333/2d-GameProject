@@ -40,6 +40,12 @@ public class ItemDetailPanel : MonoBehaviour
     {
         gameObject.SetActive(true);
 
+        // 如果是弹药物品且图标为空，自动生成图标
+        if (item.icon == null && item is AmmoItem ammoForIcon)
+        {
+            item.icon = AmmoIconManager.GetAmmoIcon(ammoForIcon.ammoType, ammoForIcon.isHighGrade);
+        }
+
         if (itemNameText != null) itemNameText.text = item.itemName;
         if (itemIconImage != null)
         {

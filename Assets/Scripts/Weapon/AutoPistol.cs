@@ -20,7 +20,10 @@ public class AutoPistol : WeaponBase
         range          = 10f;     // 射程极近
         recoil         = 1.5f;
         baseSpread     = 4f;
+        moveSpreadBonus= 2.5f;    // 移动散射较小（轻便武器）
         moveSpeedMult  = 0.95f;   // 持枪移速极快
+        aimSpreadMult  = 0.4f;    // 瞄准精准度一般
+        aimMoveSpeedMult= 0.55f;  // 瞄准移速较快
         isSemiAuto     = false;
 
         bulletSpeed    = 16f;

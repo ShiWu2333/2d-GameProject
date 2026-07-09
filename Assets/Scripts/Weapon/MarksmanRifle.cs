@@ -21,7 +21,10 @@ public class MarksmanRifle : WeaponBase
         range          = 40f;
         recoil         = 6f;
         baseSpread     = 0.8f;    // 精准度高，基础散射小
+        moveSpreadBonus= 4f;      // 移动散射大（精确武器移动惩罚高）
         moveSpeedMult  = 0.70f;   // 持枪略慢
+        aimSpreadMult  = 0.15f;   // 瞄准极为精准
+        aimMoveSpeedMult= 0.35f;  // 瞄准移速很慢
         isSemiAuto     = true;    // 半自动
 
         bulletSpeed    = 32f;

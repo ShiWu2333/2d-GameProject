@@ -21,7 +21,10 @@ public class AutoShotgun : WeaponBase
         range          = 8f;      // 射程极近
         recoil         = 5f;
         baseSpread     = 10f;     // 大散射
+        moveSpreadBonus= 2f;      // 移动散射小（霰弹本身散射大）
         moveSpeedMult  = 0.88f;   // 持枪移速快
+        aimSpreadMult  = 0.5f;    // 瞄准收缩中等（霰弹不适合精确）
+        aimMoveSpeedMult= 0.55f;  // 瞄准移速较快
         isSemiAuto     = false;
 
         bulletSpeed    = 16f;

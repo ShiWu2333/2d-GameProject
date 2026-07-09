@@ -40,7 +40,10 @@ public class Knife : WeaponBase
         range          = attackRadius;
         recoil         = 0f;
         baseSpread     = 0f;
+        moveSpreadBonus= 0f;      // 刀无散射概念
         moveSpeedMult  = 1.0f;    // 持刀移速极快（由PlayerController额外加成）
+        aimSpreadMult  = 1f;      // 刀不使用瞄准
+        aimMoveSpeedMult= 1f;     // 刀不使用瞄准
         isSemiAuto     = true;    // 每次点击攻击一次
 
         bulletSpeed    = 0f;
