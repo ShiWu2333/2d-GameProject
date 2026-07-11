@@ -70,7 +70,7 @@ public class PlayerController : MonoBehaviour
         if (PauseMenu.IsGamePaused) return;
 
         // 背包打开时禁止移动和射击，只允许背包操作
-        if (IsInventoryOpen())
+        if (IsInventoryOpen() || IsContainerOpen())
         {
             rb.velocity = Vector2.zero;
             return;
@@ -85,7 +85,7 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         if (!stats.IsAlive) return;
-        if (IsInventoryOpen()) return;
+        if (IsInventoryOpen() || IsContainerOpen()) return;
         Move();
     }
 
@@ -93,6 +93,11 @@ public class PlayerController : MonoBehaviour
     {
         var inv = GetComponent<InventorySystem>();
         return inv != null && inv.IsOpen;
+    }
+
+    private bool IsContainerOpen()
+    {
+        return ContainerUI.Instance != null && ContainerUI.Instance.IsOpen;
     }
 
     // ── 输入收集 ──────────────────────────────────────

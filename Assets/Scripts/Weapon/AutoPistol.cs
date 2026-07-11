@@ -11,7 +11,8 @@ public class AutoPistol : WeaponBase
     protected override void Awake()
     {
         weaponName     = "自动手枪";
-        ammoType       = AmmoType.SMG;    // 共用冲锋枪弹
+        ammoType       = AmmoType.SMG;
+        weaponSlotCount= 2;    // 共用冲锋枪弹
 
         damage         = 9f;
         fireRate       = 0.05f;   // 20发/秒

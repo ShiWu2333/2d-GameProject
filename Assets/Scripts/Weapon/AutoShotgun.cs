@@ -13,6 +13,7 @@ public class AutoShotgun : WeaponBase
     {
         weaponName     = "连发霰弹枪";
         ammoType       = AmmoType.Shotgun;
+        weaponSlotCount= 7;
 
         damage         = 12f;     // 单颗弹丸伤害，6颗合计72
         fireRate       = 0.25f;   // ~4发/秒

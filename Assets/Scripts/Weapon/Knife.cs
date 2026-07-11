@@ -31,7 +31,8 @@ public class Knife : WeaponBase
     protected override void Awake()
     {
         weaponName     = "刀";
-        ammoType       = AmmoType.None;   // 无限使用
+        ammoType       = AmmoType.None;
+        weaponSlotCount= 1;   // 无限使用
 
         damage         = 35f;
         fireRate       = 0.45f;   // 攻击速度中

@@ -85,6 +85,32 @@ public class InventorySlotUI : MonoBehaviour, IPointerClickHandler
         if (countText != null)  countText.text = "";
     }
 
+    /// <summary>设置为子格样式（主格图标半透明 + 灰色背景）</summary>
+    public void SetSubSlot(InventoryItem mainItem, Color bgColor)
+    {
+        // 灰色背景
+        if (background != null)
+            background.color = new Color(0.3f, 0.3f, 0.3f, 0.7f);
+
+        // 主格图标半透明显示
+        if (iconImage != null)
+        {
+            if (mainItem != null && mainItem.icon != null)
+            {
+                iconImage.sprite  = mainItem.icon;
+                iconImage.color   = new Color(1f, 1f, 1f, 0.5f);
+                iconImage.enabled = true;
+            }
+            else
+            {
+                iconImage.enabled = false;
+            }
+        }
+
+        if (countText != null)
+            countText.text = "";
+    }
+
     private void CreateSelectionBorder()
     {
         selectionBorder = new GameObject("SelectionBorder", typeof(RectTransform));

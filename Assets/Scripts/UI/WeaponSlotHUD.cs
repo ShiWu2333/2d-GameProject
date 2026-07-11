@@ -153,10 +153,19 @@ public class WeaponSlotHUD : MonoBehaviour
         if (!IsInventoryOpen()) return;
         if (lockedSlotIndex < 0) return;
 
+        KeyCode interactKey = KeyBindings.Instance != null ? KeyBindings.Instance.interact : KeyCode.F;
         KeyCode dropKey = KeyBindings.Instance != null ? KeyBindings.Instance.dropWeapon : KeyCode.G;
-        if (!Input.GetKeyDown(dropKey)) return;
 
-        UnequipLockedWeapon();
+        // F键：卸下武器到背包
+        if (Input.GetKeyDown(interactKey))
+        {
+            UnequipLockedWeapon();
+        }
+        // G键：直接丢到地上
+        else if (Input.GetKeyDown(dropKey))
+        {
+            DropLockedWeapon();
+        }
     }
 
     /// <summary>锁定指定武器槽</summary>
@@ -207,7 +216,9 @@ public class WeaponSlotHUD : MonoBehaviour
             itemName  = weapon.weaponName,
             icon      = null,
             quantity  = 1,
-            weaponRef = weapon,  // 保存武器引用，丢弃时恢复
+            slotCount = weapon.weaponSlotCount,
+            tags      = new System.Collections.Generic.List<string> { LootTags.Weapon },
+            weaponRef = weapon,
         };
         if (!inventory.AddItem(weaponItem))
         {
@@ -227,6 +238,51 @@ public class WeaponSlotHUD : MonoBehaviour
         }
 
         Debug.Log($"卸下武器到背包：{weapon.weaponName}");
+        UnlockSlot();
+    }
+
+    /// <summary>直接丢弃锁定的武器到地上</summary>
+    private void DropLockedWeapon()
+    {
+        if (slotSystem == null) return;
+        var slot = (WeaponSlotSystem.WeaponSlot)lockedSlotIndex;
+        var weapon = slotSystem.GetWeaponInSlot(slot);
+
+        if (weapon == null)
+        {
+            UnlockSlot();
+            return;
+        }
+
+        // 从槽位移除
+        slotSystem.SetWeaponInSlot(slot, null);
+
+        // 如果是当前手持，通知PlayerController
+        if (slot == slotSystem.CurrentSlot)
+        {
+            var pc = slotSystem.GetComponent<PlayerController>();
+            if (pc != null) pc.EquipWeapon(null);
+        }
+
+        // 丢到地上
+        weapon.OnDrop();
+        weapon.gameObject.SetActive(true);
+        Vector2 dropDir = Random.insideUnitCircle.normalized;
+        weapon.transform.position = (Vector2)slotSystem.transform.position + dropDir * 1.5f;
+
+        // 添加GroundItem让其可拾取
+        var groundItem = weapon.GetComponent<GroundItem>();
+        if (groundItem == null)
+            groundItem = weapon.gameObject.AddComponent<GroundItem>();
+        groundItem.itemType = GroundItem.GroundItemType.Weapon;
+        groundItem.weapon = weapon;
+        groundItem.displayName = weapon.weaponName;
+
+        // 确保有碰撞体
+        var col = weapon.GetComponent<Collider2D>();
+        if (col != null) col.isTrigger = true;
+
+        Debug.Log($"丢弃武器到地面：{weapon.weaponName}");
         UnlockSlot();
     }
 

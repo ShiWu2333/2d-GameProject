@@ -22,16 +22,33 @@ public class InventorySystem : MonoBehaviour
     // 状态
     private bool isOpen;
 
+    // Esc关闭背包时标记，防止同帧触发暂停
+    private bool escapedThisFrame;
+
     void Update()
     {
+        escapedThisFrame = false;
         if (PauseMenu.IsGamePaused) return;
+        if (ContainerUI.Instance != null && ContainerUI.Instance.IsOpen) return;
 
         KeyCode invKey = KeyBindings.Instance != null ? KeyBindings.Instance.inventory : KeyCode.M;
+
+        // Esc关闭背包
+        if (isOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            CloseInventory();
+            escapedThisFrame = true;
+            return;
+        }
+
         if (Input.GetKeyDown(invKey))
         {
             ToggleInventory();
         }
     }
+
+    /// <summary>本帧是否刚用Esc关闭了背包（供PauseMenu检查）</summary>
+    public bool EscapedThisFrame => escapedThisFrame;
 
     // ── 背包开关 ──────────────────────────────────────
     private void ToggleInventory()
@@ -45,6 +62,40 @@ public class InventorySystem : MonoBehaviour
             inventoryUI.gameObject.SetActive(isOpen);
             if (isOpen) inventoryUI.RefreshDisplay();
         }
+
+        // 关闭时取消武器栏锁定
+        if (!isOpen)
+        {
+            var weaponHUD = FindObjectOfType<WeaponSlotHUD>();
+            if (weaponHUD != null)
+                weaponHUD.UnlockSlot();
+        }
+    }
+
+    /// <summary>强制打开背包（供外部调用，如容器UI）</summary>
+    public void OpenInventory()
+    {
+        if (isOpen) return;
+        isOpen = true;
+        if (inventoryUI != null)
+        {
+            inventoryUI.gameObject.SetActive(true);
+            inventoryUI.RefreshDisplay();
+        }
+    }
+
+    /// <summary>强制关闭背包</summary>
+    public void CloseInventory()
+    {
+        if (!isOpen) return;
+        isOpen = false;
+        if (inventoryUI != null)
+            inventoryUI.gameObject.SetActive(false);
+
+        // 取消武器栏锁定
+        var weaponHUD = FindObjectOfType<WeaponSlotHUD>();
+        if (weaponHUD != null)
+            weaponHUD.UnlockSlot();
     }
 
     // ── 物品管理 ──────────────────────────────────────
@@ -54,7 +105,10 @@ public class InventorySystem : MonoBehaviour
         if (item is AmmoItem newAmmo)
             return AddAmmoItem(newAmmo);
 
-        if (items.Count >= maxSlots)
+        // 检查总格子占用（含武器子格）
+        int usedSlots = SlotLockManager.GetTotalSlotsUsed(items);
+        int neededSlots = item.GetSlotCount();
+        if (usedSlots + neededSlots > maxSlots)
         {
             Debug.Log("背包已满");
             return false;
@@ -94,7 +148,8 @@ public class InventorySystem : MonoBehaviour
         // 剩余的开新格
         while (remaining > 0)
         {
-            if (items.Count >= maxSlots)
+            int usedSlots = SlotLockManager.GetTotalSlotsUsed(items);
+            if (usedSlots + 1 > maxSlots)
             {
                 Debug.Log("背包已满，部分弹药无法放入");
                 break;
@@ -259,9 +314,47 @@ public class InventoryItem
     public Sprite icon;
     public int quantity = 1;
 
+    /// <summary>物品标签（如"弹药"、"武器"）</summary>
+    public System.Collections.Generic.List<string> tags;
+
+    /// <summary>武器占格数（普通物品=1，武器可能>1）</summary>
+    public int slotCount = 1;
+
+    /// <summary>是否为被锁定的子格（武器占位）</summary>
+    [System.NonSerialized]
+    public bool isLockedSubSlot = false;
+
+    /// <summary>子格对应的主格物品名</summary>
+    [System.NonSerialized]
+    public string lockedByWeapon;
+
     /// <summary>如果此物品是武器，存储武器 GameObject 引用（用于丢弃时恢复）</summary>
     [System.NonSerialized]
     public WeaponBase weaponRef;
+
+    /// <summary>获取武器占格数（从tags中解析）</summary>
+    public int GetSlotCount()
+    {
+        if (slotCount > 1) return slotCount;
+        if (tags == null) return 1;
+        foreach (var tag in tags)
+        {
+            if (tag.StartsWith("slots:"))
+            {
+                if (int.TryParse(tag.Substring(6), out int count))
+                    return count;
+            }
+        }
+        return 1;
+    }
+
+    /// <summary>是否是武器类物品</summary>
+    public bool IsWeapon()
+    {
+        if (tags != null && tags.Contains(LootTags.Weapon)) return true;
+        if (weaponRef != null) return true;
+        return false;
+    }
 
     public virtual void Use(PlayerController player)
     {

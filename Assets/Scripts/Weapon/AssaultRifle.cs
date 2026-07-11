@@ -12,6 +12,7 @@ public class AssaultRifle : WeaponBase
     {
         weaponName     = "突击步枪";
         ammoType       = AmmoType.Rifle;
+        weaponSlotCount= 8;
 
         damage         = 20f;
         fireRate       = 0.13f;   // ~7.7发/秒

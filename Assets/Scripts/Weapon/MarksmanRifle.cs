@@ -13,6 +13,7 @@ public class MarksmanRifle : WeaponBase
     {
         weaponName     = "射手步枪";
         ammoType       = AmmoType.Rifle;
+        weaponSlotCount= 9;
 
         damage         = 45f;
         fireRate       = 0.2f;    // ~5发/秒

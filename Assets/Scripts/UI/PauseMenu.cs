@@ -40,6 +40,14 @@ public class PauseMenu : MonoBehaviour
         KeyCode pauseKey = KeyBindings.Instance != null ? KeyBindings.Instance.pause : KeyCode.Escape;
         if (Input.GetKeyDown(pauseKey))
         {
+            if (!isPaused)
+            {
+                // 如果背包/容器刚用Esc关闭，不触发暂停
+                if (ContainerUI.Instance != null && ContainerUI.Instance.IsOpen) return;
+                var inv = FindObjectOfType<InventorySystem>();
+                if (inv != null && (inv.IsOpen || inv.EscapedThisFrame)) return;
+            }
+
             if (isPaused)
                 Resume();
             else

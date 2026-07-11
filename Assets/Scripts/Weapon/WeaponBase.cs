@@ -15,6 +15,9 @@ public abstract class WeaponBase : MonoBehaviour
     public string   weaponName = "Weapon";
     public AmmoType ammoType   = AmmoType.Rifle;
 
+    [Tooltip("武器在背包/容器中占用的格子数")]
+    public int weaponSlotCount = 2;
+
     [Tooltip("当前装填的弹药数据（决定穿透等级和伤害倍率）。留空则使用武器基础伤害")]
     public AmmoData currentAmmoData;
 
@@ -135,6 +138,7 @@ public abstract class WeaponBase : MonoBehaviour
         if (moveSpreadBonus <= 0f)  moveSpreadBonus = 3f;
         if (aimSpreadMult   <= 0f)  aimSpreadMult   = 0.3f;
         if (aimMoveSpeedMult<= 0f)  aimMoveSpeedMult= 0.45f;
+        if (weaponSlotCount <= 0)   weaponSlotCount = 2;
 
         // 初始化图层排序器
         InitializeLayerSorter();

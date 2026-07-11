@@ -65,6 +65,7 @@ public class WeaponSlotSystem : MonoBehaviour
         if (stats != null && !stats.IsAlive) return;
         var inv = GetComponent<InventorySystem>();
         if (inv != null && inv.IsOpen) return;
+        if (ContainerUI.Instance != null && ContainerUI.Instance.IsOpen) return;
 
         var kb = KeyBindings.Instance;
         KeyCode k1 = kb != null ? kb.weapon1 : KeyCode.Alpha1;
@@ -82,9 +83,10 @@ public class WeaponSlotSystem : MonoBehaviour
     // ── G键丢弃当前主手武器 ───────────────────────────
     private void HandleDropInput()
     {
-        // 背包打开时G键由背包/武器栏HUD处理
+        // 背包或容器打开时，G键不由此处处理
         var inv = GetComponent<InventorySystem>();
         if (inv != null && inv.IsOpen) return;
+        if (ContainerUI.Instance != null && ContainerUI.Instance.IsOpen) return;
 
         KeyCode dropKey = KeyBindings.Instance != null ? KeyBindings.Instance.dropWeapon : KeyCode.G;
         if (Input.GetKeyDown(dropKey))

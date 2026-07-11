@@ -246,7 +246,9 @@ public class PickupSystem : MonoBehaviour
                 itemName  = target.weapon.weaponName,
                 icon      = target.GetDisplayIcon(),
                 quantity  = 1,
-                weaponRef = target.weapon,  // 保存武器引用
+                slotCount = target.weapon.weaponSlotCount,
+                tags      = new System.Collections.Generic.List<string> { LootTags.Weapon },
+                weaponRef = target.weapon,
             };
             if (!inventory.AddItem(weaponItem))
             {

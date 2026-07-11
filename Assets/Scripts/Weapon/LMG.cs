@@ -12,6 +12,7 @@ public class LMG : WeaponBase
     {
         weaponName     = "轻机枪";
         ammoType       = AmmoType.LMG;
+        weaponSlotCount= 10;
 
         damage         = 18f;
         fireRate       = 0.10f;   // 10发/秒

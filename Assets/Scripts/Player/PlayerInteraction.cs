@@ -37,17 +37,37 @@ public class PlayerInteraction : MonoBehaviour
         HandleInteractionInput();
     }
 
-    // ── 扫描前方可交互物体 ─────────────────────────────
+    // ── 扫描可交互物体（鼠标指向 + 范围内）──────────
     private void ScanForInteractables()
     {
-        // 从玩家位置向面朝方向发射射线
-        Vector2 direction = transform.up; // 玩家面朝方向（PlayerController 旋转后 up 朝向鼠标）
-        RaycastHit2D hit = Physics2D.Raycast(rayOrigin.position, direction, interactionRange, interactableLayer);
-
         IInteractable newInteractable = null;
-        if (hit.collider != null)
+
+        // 用OverlapCircle找范围内所有碰撞体，再筛选鼠标最接近的可交互物体
+        var cols = Physics2D.OverlapCircleAll(transform.position, interactionRange);
+
+        float bestDist = float.MaxValue;
+        Vector2 mouseWorld = GetMouseWorldPos();
+
+        foreach (var col in cols)
         {
-            newInteractable = hit.collider.GetComponent<IInteractable>();
+            if (col.gameObject == gameObject) continue; // 排除自己
+
+            var interactable = col.GetComponent<IInteractable>();
+            if (interactable == null) continue;
+
+            // 检查鼠标是否指向该物体（鼠标到物体的距离）
+            float distToMouse = Vector2.Distance(mouseWorld, col.transform.position);
+            float distToPlayer = Vector2.Distance(transform.position, col.transform.position);
+
+            // 物体必须在交互范围内，且鼠标离物体够近（物体半径+容差）
+            if (distToPlayer <= interactionRange && distToMouse < distToPlayer + 1.5f)
+            {
+                if (distToMouse < bestDist)
+                {
+                    bestDist = distToMouse;
+                    newInteractable = interactable;
+                }
+            }
         }
 
         // 如果检测到的物体发生变化
@@ -71,31 +91,71 @@ public class PlayerInteraction : MonoBehaviour
             // 更新UI提示
             if (interactionPromptUI != null)
                 interactionPromptUI.SetActive(canInteract);
+
+            // 更新HUD交互提示文字
+            UpdatePromptText();
         }
     }
 
-    // ── 处理F键交互 ───────────────────────────────────
+    private void UpdatePromptText()
+    {
+        var hud = FindObjectOfType<PlayerHUD>();
+        if (hud == null) return;
+
+        if (!canInteract)
+        {
+            hud.HideInteractionPrompt();
+            return;
+        }
+
+        // LootContainer有自定义提示
+        if (currentInteractable is LootContainer loot)
+        {
+            hud.ShowInteractionPrompt(loot.GetPromptText());
+        }
+        else
+        {
+            hud.ShowInteractionPrompt("[F] 交互");
+        }
+    }
+
+    // ── 处理交互输入（F键或鼠标左键）─────────────────
     private void HandleInteractionInput()
     {
         if (!canInteract) return;
 
         KeyCode interactKey = KeyBindings.Instance != null ? KeyBindings.Instance.interact : KeyCode.F;
-        if (!Input.GetKeyDown(interactKey)) return;
+        bool pressed = Input.GetKeyDown(interactKey) || Input.GetMouseButtonDown(0);
+        if (!pressed) return;
 
-        // 背包打开时不处理场景交互
+        // 背包或容器打开时不处理场景交互
         var inv = GetComponent<InventorySystem>();
         if (inv != null && inv.IsOpen) return;
+        if (ContainerUI.Instance != null && ContainerUI.Instance.IsOpen) return;
 
         currentInteractable?.Interact(this);
+    }
+
+    // ── 获取鼠标世界坐标 ─────────────────────────────
+    private Vector2 GetMouseWorldPos()
+    {
+        var pc = GetComponent<PlayerController>();
+        if (pc != null)
+            return pc.MouseWorldPos;
+
+        // fallback
+        var cam = Camera.main;
+        if (cam == null) return transform.position;
+        Vector3 screen = Input.mousePosition;
+        screen.z = Mathf.Abs(cam.transform.position.z);
+        return cam.ScreenToWorldPoint(screen);
     }
 
     // ── 调试绘制 ──────────────────────────────────────
     void OnDrawGizmosSelected()
     {
-        if (rayOrigin == null) return;
-        Gizmos.color = Color.yellow;
-        Vector2 dir = transform.up * interactionRange;
-        Gizmos.DrawLine(rayOrigin.position, rayOrigin.position + (Vector3)dir);
+        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+        Gizmos.DrawWireSphere(transform.position, interactionRange);
     }
 }
 

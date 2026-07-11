@@ -12,6 +12,7 @@ public class SMG : WeaponBase
     {
         weaponName     = "冲锋枪";
         ammoType       = AmmoType.SMG;
+        weaponSlotCount= 6;
 
         damage         = 14f;
         fireRate       = 0.08f;   // ~12.5发/秒

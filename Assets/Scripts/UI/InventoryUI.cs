@@ -149,15 +149,16 @@ public class InventoryUI : MonoBehaviour
     {
         if (detailPanel == null || inventorySystem == null) return;
         var items = inventorySystem.GetItems();
+        var slotStates = SlotLockManager.CalculateSlotStates(items, TotalSlots);
 
-        // 没有选中物品时，显示当前手持武器信息
-        if (index < 0 || index >= items.Count)
+        // 空格或子格：隐藏详细面板
+        if (index < 0 || index >= slotStates.Length || slotStates[index].item == null || slotStates[index].isSubSlot)
         {
-            ShowCurrentWeaponDetail();
+            detailPanel.Hide();
             return;
         }
 
-        var item = items[index];
+        var item = slotStates[index].item;
 
         // 检查是否是武器物品（通过名称匹配场景中隐藏的武器）
         var slotSystem = inventorySystem.GetComponent<WeaponSlotSystem>();
@@ -508,15 +509,27 @@ public class InventoryUI : MonoBehaviour
     {
         if (inventorySystem == null) return;
         var items = inventorySystem.GetItems();
+        var slotStates = SlotLockManager.CalculateSlotStates(items, slotUIs.Count);
 
         for (int i = 0; i < slotUIs.Count; i++)
         {
             if (!slotUIs[i].gameObject.activeSelf) continue;
 
-            if (i < items.Count)
-                slotUIs[i].SetItem(items[i], filledSlotColor);
+            var state = slotStates[i];
+
+            if (state.isSubSlot)
+            {
+                // 子格：主格图标 + 灰色滤镜
+                slotUIs[i].SetSubSlot(state.mainItem, filledSlotColor);
+            }
+            else if (state.item != null)
+            {
+                slotUIs[i].SetItem(state.item, filledSlotColor);
+            }
             else
+            {
                 slotUIs[i].SetEmpty(emptySlotColor);
+            }
         }
     }
 
