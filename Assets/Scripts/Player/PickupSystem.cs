@@ -221,6 +221,11 @@ public class PickupSystem : MonoBehaviour
             weapon.transform.localRotation = Quaternion.identity;
         }
 
+        // 重新应用图层排序
+        var sorter = weapon.GetComponent<WeaponLayerSorter>();
+        if (sorter != null)
+            sorter.OnWeaponEquipped(pc);
+
         // 如果不是当前槽位，隐藏
         if (assignSlot != slotSystem.CurrentSlot)
             weapon.gameObject.SetActive(false);
@@ -271,6 +276,13 @@ public class PickupSystem : MonoBehaviour
     private void UpdateLootPanel()
     {
         if (lootPanel == null) return;
+
+        // 背包打开时隐藏散落物面板
+        if (inventory != null && inventory.IsOpen)
+        {
+            lootPanel.Hide();
+            return;
+        }
 
         if (nearbyItems.Count > 0)
         {

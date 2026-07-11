@@ -51,6 +51,8 @@ public class WeaponSlotSystem : MonoBehaviour
 
     void Update()
     {
+        if (PauseMenu.IsGamePaused) return;
+
         HandleSlotInput();
         HandleDropInput();
     }
@@ -150,6 +152,14 @@ public class WeaponSlotSystem : MonoBehaviour
 
         // 显示新武器
         SetWeaponActive(CurrentWeapon, true);
+
+        // 重新应用图层排序
+        if (CurrentWeapon != null)
+        {
+            var sorter = CurrentWeapon.GetComponent<WeaponLayerSorter>();
+            if (sorter != null)
+                sorter.ApplySorting();
+        }
 
         // 通知 PlayerController 更新当前武器
         if (playerController != null)

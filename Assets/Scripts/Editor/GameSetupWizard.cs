@@ -102,10 +102,41 @@ public class GameSetupWizard : EditorWindow
     private void DrawWeaponSlots()
     {
         Section("武器槽配置");
-        string[] labels = System.Array.ConvertAll(PrefabBuilder.WeaponDefs, d => d.label);
-        slot1Index = EditorGUILayout.Popup("槽位1（键1）主武器", slot1Index, labels);
-        slot2Index = EditorGUILayout.Popup("槽位2（键2）主武器", slot2Index, labels);
-        meleeIndex = EditorGUILayout.Popup("槽位3（键3）近战",   meleeIndex, labels);
+
+        // 枪械列表（排除刀）
+        var gunLabels = new System.Collections.Generic.List<string>();
+        var gunIndices = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < PrefabBuilder.WeaponDefs.Length; i++)
+        {
+            if (PrefabBuilder.WeaponDefs[i].ammo != AmmoType.None)
+            {
+                gunLabels.Add(PrefabBuilder.WeaponDefs[i].label);
+                gunIndices.Add(i);
+            }
+        }
+        string[] gunOptions = gunLabels.ToArray();
+
+        // 槽位1和2：只能选枪
+        int gun1Local = gunIndices.IndexOf(slot1Index);
+        if (gun1Local < 0) gun1Local = 0;
+        gun1Local = EditorGUILayout.Popup("槽位1（键1）主武器", gun1Local, gunOptions);
+        slot1Index = gunIndices[gun1Local];
+
+        int gun2Local = gunIndices.IndexOf(slot2Index);
+        if (gun2Local < 0) gun2Local = 0;
+        gun2Local = EditorGUILayout.Popup("槽位2（键2）主武器", gun2Local, gunOptions);
+        slot2Index = gunIndices[gun2Local];
+
+        // 槽位3：固定为刀
+        GUI.enabled = false;
+        EditorGUILayout.Popup("槽位3（键3）近战", 0, new[] { "刀" });
+        GUI.enabled = true;
+        for (int i = 0; i < PrefabBuilder.WeaponDefs.Length; i++)
+        {
+            if (PrefabBuilder.WeaponDefs[i].ammo == AmmoType.None)
+            { meleeIndex = i; break; }
+        }
+
         EditorGUILayout.Space(4);
         Line();
     }

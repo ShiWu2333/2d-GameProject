@@ -21,6 +21,9 @@ public class PauseMenu : MonoBehaviour
 
     private bool isPaused;
 
+    /// <summary>全局暂停状态（供其他脚本检查）</summary>
+    public static bool IsGamePaused { get; private set; }
+
     void Start()
     {
         if (overlay != null) overlay.SetActive(false);
@@ -47,6 +50,7 @@ public class PauseMenu : MonoBehaviour
     public void Pause()
     {
         isPaused = true;
+        IsGamePaused = true;
         Time.timeScale = 0f;
 
         if (overlay != null) overlay.SetActive(true);
@@ -57,6 +61,7 @@ public class PauseMenu : MonoBehaviour
     public void Resume()
     {
         isPaused = false;
+        IsGamePaused = false;
         Time.timeScale = 1f;
 
         if (overlay != null) overlay.SetActive(false);

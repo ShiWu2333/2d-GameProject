@@ -67,6 +67,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (!stats.IsAlive) return;
+        if (PauseMenu.IsGamePaused) return;
 
         // 背包打开时禁止移动和射击，只允许背包操作
         if (IsInventoryOpen())

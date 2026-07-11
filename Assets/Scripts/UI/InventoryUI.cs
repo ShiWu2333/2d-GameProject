@@ -66,7 +66,23 @@ public class InventoryUI : MonoBehaviour
 
     void OnEnable()
     {
+        // 自动查找详细面板
+        if (detailPanel == null)
+        {
+            var panelGO = GameObject.Find("ItemDetailPanel");
+            if (panelGO != null)
+                detailPanel = panelGO.GetComponent<ItemDetailPanel>();
+        }
+
         RefreshDisplay();
+        // 背包打开时默认显示当前武器信息
+        ShowCurrentWeaponDetail();
+    }
+
+    void OnDisable()
+    {
+        // 背包关闭时取消选中并隐藏详细面板
+        DeselectAll();
     }
 
     void Update()
@@ -133,16 +149,17 @@ public class InventoryUI : MonoBehaviour
     {
         if (detailPanel == null || inventorySystem == null) return;
         var items = inventorySystem.GetItems();
+
+        // 没有选中物品时，显示当前手持武器信息
         if (index < 0 || index >= items.Count)
         {
-            detailPanel.Hide();
+            ShowCurrentWeaponDetail();
             return;
         }
 
         var item = items[index];
 
         // 检查是否是武器物品（通过名称匹配场景中隐藏的武器）
-        // 优先检查 WeaponSlotSystem 中的武器
         var slotSystem = inventorySystem.GetComponent<WeaponSlotSystem>();
         if (slotSystem != null)
         {
@@ -154,8 +171,34 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
+        // 也检查weaponRef引用
+        if (item.weaponRef != null)
+        {
+            detailPanel.ShowWeapon(item.weaponRef);
+            return;
+        }
+
         // 普通物品/弹药
         detailPanel.ShowItem(item);
+    }
+
+    /// <summary>显示当前手持武器的详细信息</summary>
+    private void ShowCurrentWeaponDetail()
+    {
+        if (detailPanel == null) return;
+
+        var slotSystem = inventorySystem != null
+            ? inventorySystem.GetComponent<WeaponSlotSystem>()
+            : null;
+
+        if (slotSystem != null && slotSystem.CurrentWeapon != null)
+        {
+            detailPanel.ShowWeapon(slotSystem.CurrentWeapon);
+        }
+        else
+        {
+            detailPanel.Hide();
+        }
     }
 
     private WeaponBase FindWeaponByName(WeaponSlotSystem slotSystem, string weaponName)

@@ -48,15 +48,19 @@ public class WeaponBalanceTool : EditorWindow
 #endif
         playerStats = playerController != null ? playerController.GetComponent<PlayerStats>() : null;
 
-        // 场景武器
+        // 场景武器（包含隐藏的武器）
         sceneWeapons.Clear();
-#if UNITY_2023_1_OR_NEWER
-        sceneWeapons.AddRange(Object.FindObjectsByType<WeaponBase>(FindObjectsSortMode.None));
-#else
-        sceneWeapons.AddRange(Object.FindObjectsOfType<WeaponBase>());
-#endif
+        var allWeaponsInScene = Resources.FindObjectsOfTypeAll<WeaponBase>();
+        foreach (var w in allWeaponsInScene)
+        {
+            // 排除Prefab资产，只要场景中的实例
+            if (w == null) continue;
+            if (EditorUtility.IsPersistent(w.gameObject)) continue;
+            if (w.gameObject.scene.name == null) continue;
+            sceneWeapons.Add(w);
+        }
 
-        // Prefab武器
+        // Prefab武器（手动调用Awake获取子类赋值的真实数值）
         prefabWeapons.Clear();
         string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs/Weapons" });
         foreach (string guid in guids)
@@ -65,8 +69,29 @@ public class WeaponBalanceTool : EditorWindow
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null) continue;
             var wb = prefab.GetComponent<WeaponBase>();
-            if (wb != null) prefabWeapons.Add(wb);
+            if (wb != null)
+            {
+                var tempGO = Object.Instantiate(prefab);
+                tempGO.hideFlags = HideFlags.HideAndDontSave;
+                var tempWb = tempGO.GetComponent<WeaponBase>();
+                if (tempWb != null)
+                {
+                    // 通过反射调用protected Awake
+                    var awakeMethod = tempWb.GetType().GetMethod("Awake",
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Public);
+                    if (awakeMethod != null)
+                        awakeMethod.Invoke(tempWb, null);
+
+                    CopyWeaponValues(tempWb, wb);
+                    EditorUtility.SetDirty(prefab);
+                }
+                Object.DestroyImmediate(tempGO);
+                prefabWeapons.Add(wb);
+            }
         }
+        AssetDatabase.SaveAssets();
     }
 
     // ══════════════════════════════════════════════════
@@ -255,5 +280,28 @@ public class WeaponBalanceTool : EditorWindow
     {
         var r = EditorGUILayout.GetControlRect(false, 1f);
         EditorGUI.DrawRect(r, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+    }
+
+    /// <summary>
+    /// 把临时实例化的武器数值复制回Prefab资产
+    /// </summary>
+    private static void CopyWeaponValues(WeaponBase from, WeaponBase to)
+    {
+        to.weaponName      = from.weaponName;
+        to.ammoType        = from.ammoType;
+        to.damage          = from.damage;
+        to.fireRate        = from.fireRate;
+        to.maxAmmo         = from.maxAmmo;
+        to.reloadTime      = from.reloadTime;
+        to.range           = from.range;
+        to.recoil          = from.recoil;
+        to.baseSpread      = from.baseSpread;
+        to.moveSpreadBonus = from.moveSpreadBonus;
+        to.moveSpeedMult   = from.moveSpeedMult;
+        to.aimSpreadMult   = from.aimSpreadMult;
+        to.aimMoveSpeedMult= from.aimMoveSpeedMult;
+        to.isSemiAuto      = from.isSemiAuto;
+        to.bulletSpeed     = from.bulletSpeed;
+        to.pelletsPerShot  = from.pelletsPerShot;
     }
 }

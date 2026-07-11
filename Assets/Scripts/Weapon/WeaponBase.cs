@@ -90,6 +90,9 @@ public abstract class WeaponBase : MonoBehaviour
     /// <summary>是否正在瞄准（由PlayerController设置）</summary>
     public bool  IsAiming      { get; set; }
 
+    /// <summary>换弹进度 0~1（0=未开始，1=完成）</summary>
+    public float ReloadProgress { get; private set; }
+
     /// <summary>当前累积后坐力偏移角（度），随时间恢复</summary>
     public float CurrentRecoilAngle { get; private set; }
 
@@ -113,6 +116,10 @@ public abstract class WeaponBase : MonoBehaviour
 
     // 半自动：记录上一帧鼠标是否按下
     private bool prevTriggerHeld;
+
+    // 换弹计时
+    private float reloadTimer;
+    private float reloadDuration;
 
     // ══════════════════════════════════════════════════
     //  生命周期
@@ -162,6 +169,13 @@ public abstract class WeaponBase : MonoBehaviour
         {
             CurrentRecoilAngle = Mathf.Max(0f,
                 CurrentRecoilAngle - recoilRecoverySpeed * Time.deltaTime);
+        }
+
+        // 换弹进度更新
+        if (isReloading && reloadDuration > 0f)
+        {
+            reloadTimer += Time.deltaTime;
+            ReloadProgress = Mathf.Clamp01(reloadTimer / reloadDuration);
         }
     }
 
@@ -295,8 +309,11 @@ public abstract class WeaponBase : MonoBehaviour
 
     protected virtual void StartReload()
     {
-        isReloading = true;
-        canShoot    = false;
+        isReloading    = true;
+        canShoot       = false;
+        reloadTimer    = 0f;
+        reloadDuration = reloadTime;
+        ReloadProgress = 0f;
         onReloadStart?.Invoke();
         Invoke(nameof(FinishReload), reloadTime);
     }
@@ -326,8 +343,9 @@ public abstract class WeaponBase : MonoBehaviour
             currentAmmo = maxAmmo;
         }
 
-        isReloading = false;
-        canShoot    = true;
+        isReloading    = false;
+        canShoot       = true;
+        ReloadProgress = 0f;
         onReloadComplete?.Invoke();
         onAmmoChanged?.Invoke(currentAmmo, maxAmmo);
     }

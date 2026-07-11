@@ -24,6 +24,8 @@ public class InventorySystem : MonoBehaviour
 
     void Update()
     {
+        if (PauseMenu.IsGamePaused) return;
+
         KeyCode invKey = KeyBindings.Instance != null ? KeyBindings.Instance.inventory : KeyCode.M;
         if (Input.GetKeyDown(invKey))
         {

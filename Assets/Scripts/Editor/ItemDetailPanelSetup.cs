@@ -87,18 +87,24 @@ public static class ItemDetailPanelSetup
         wgRT.anchorMax        = new Vector2(1f, 1f);
         wgRT.pivot            = new Vector2(0.5f, 1f);
         wgRT.anchoredPosition = new Vector2(0f, y);
-        wgRT.sizeDelta        = new Vector2(0f, lineH * 8);
+        wgRT.sizeDelta        = new Vector2(0f, lineH * 14);
         detail.weaponStatsGroup = weaponGroup;
 
         float wy = 0f;
-        detail.damageText       = MakeLabel(wgRT, "Damage",    ref wy, 13, FontStyles.Normal);
-        detail.fireRateText     = MakeLabel(wgRT, "FireRate",  ref wy, 13, FontStyles.Normal);
-        detail.ammoCapacityText = MakeLabel(wgRT, "AmmoCap",   ref wy, 13, FontStyles.Normal);
-        detail.rangeText        = MakeLabel(wgRT, "Range",     ref wy, 13, FontStyles.Normal);
-        detail.recoilText       = MakeLabel(wgRT, "Recoil",    ref wy, 13, FontStyles.Normal);
-        detail.moveSpeedText    = MakeLabel(wgRT, "MoveSpeed", ref wy, 13, FontStyles.Normal);
-        detail.ammoTypeText     = MakeLabel(wgRT, "AmmoType",  ref wy, 13, FontStyles.Normal);
+        detail.damageText       = MakeLabel(wgRT, "Damage",      ref wy, 13, FontStyles.Normal);
+        detail.fireRateText     = MakeLabel(wgRT, "FireRate",    ref wy, 13, FontStyles.Normal);
+        detail.ammoCapacityText = MakeLabel(wgRT, "AmmoCap",     ref wy, 13, FontStyles.Normal);
+        detail.rangeText        = MakeLabel(wgRT, "Range",       ref wy, 13, FontStyles.Normal);
+        detail.reloadTimeText   = MakeLabel(wgRT, "ReloadTime",  ref wy, 13, FontStyles.Normal);
+        detail.recoilText       = MakeLabel(wgRT, "Recoil",      ref wy, 13, FontStyles.Normal);
+        detail.spreadText       = MakeLabel(wgRT, "Spread",      ref wy, 13, FontStyles.Normal);
+        detail.moveSpreadText   = MakeLabel(wgRT, "MoveSpread",  ref wy, 13, FontStyles.Normal);
+        detail.aimSpreadText    = MakeLabel(wgRT, "AimSpread",   ref wy, 13, FontStyles.Normal);
+        detail.moveSpeedText    = MakeLabel(wgRT, "MoveSpeed",   ref wy, 13, FontStyles.Normal);
+        detail.aimSpeedText     = MakeLabel(wgRT, "AimSpeed",    ref wy, 13, FontStyles.Normal);
+        detail.ammoTypeText     = MakeLabel(wgRT, "AmmoType",    ref wy, 13, FontStyles.Normal);
         detail.penetrationText  = MakeLabel(wgRT, "Penetration", ref wy, 13, FontStyles.Normal);
+        detail.fireModeText     = MakeLabel(wgRT, "FireMode",    ref wy, 13, FontStyles.Normal);
 
         // ── 弹药属性组 ────────────────────────────────
         var ammoGroup = FindOrMake(detailRT.transform, "AmmoStats");
