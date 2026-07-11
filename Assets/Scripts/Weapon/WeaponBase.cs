@@ -222,6 +222,10 @@ public abstract class WeaponBase : MonoBehaviour
         onAmmoChanged?.Invoke(currentAmmo, maxAmmo);
 
         SpawnBullets();
+
+        // 弹夹打空自动换弹
+        if (currentAmmo <= 0)
+            TryReload();
     }
 
     protected virtual void SpawnBullets()
