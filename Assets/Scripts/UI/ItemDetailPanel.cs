@@ -151,18 +151,23 @@ public class ItemDetailPanel : MonoBehaviour
             SetDesc($"数量：{item.quantity}");
         }
 
-        // 动态调整Content高度（延迟一帧让TMP计算preferredHeight）
+        // 动态调整Content高度
         if (contentRT != null)
-            StartCoroutine(DelayedResizeContent());
+        {
+            contentRT.sizeDelta = new Vector2(contentRT.sizeDelta.x, CalcContentHeight());
+            if (scrollRect != null) scrollRect.verticalNormalizedPosition = 1f;
+        }
     }
 
-    private System.Collections.IEnumerator DelayedResizeContent()
+    private void LateUpdate()
     {
-        yield return null; // 等一帧让TextMeshPro计算布局
-        if (contentRT != null)
-            contentRT.sizeDelta = new Vector2(contentRT.sizeDelta.x, CalcContentHeight());
-        if (scrollRect != null)
-            scrollRect.verticalNormalizedPosition = 1f;
+        // 延迟修正高度（TMP需要一帧计算preferredHeight）
+        if (contentRT != null && gameObject.activeSelf)
+        {
+            float h = CalcContentHeight();
+            if (Mathf.Abs(contentRT.sizeDelta.y - h) > 1f)
+                contentRT.sizeDelta = new Vector2(contentRT.sizeDelta.x, h);
+        }
     }
 
     /// <summary>显示武器完整详细信息</summary>
@@ -239,9 +244,12 @@ public class ItemDetailPanel : MonoBehaviour
             descriptionText.text = summary;
         }
 
-        // 重置滚动位置到顶部，延迟计算高度
+        // 重置滚动位置到顶部
         if (contentRT != null)
-            StartCoroutine(DelayedResizeContent());
+        {
+            contentRT.sizeDelta = new Vector2(contentRT.sizeDelta.x, CalcContentHeight());
+            if (scrollRect != null) scrollRect.verticalNormalizedPosition = 1f;
+        }
     }
 
     /// <summary>
