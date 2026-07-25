@@ -108,6 +108,40 @@ public class ArmorComponent : MonoBehaviour
         return rawDamage * (1f - CurrentAbsorption * 0.5f);
     }
 
+    /// <summary>
+    /// 处理无AmmoData的命中（如敌人子弹）
+    /// 使用穿透等级直接计算
+    /// </summary>
+    public float ProcessHitWithPenetration(float rawDamage, ArmorPenetrationLevel penLevel)
+    {
+        if (!HasArmor) return rawDamage;
+
+        int penVal = (int)penLevel;
+        int armorVal = (int)ArmorClass;
+        int diff = penVal - armorVal;
+
+        float bodyDamageMult;
+        float durMult;
+
+        if (diff >= 2)       { bodyDamageMult = 1.00f; durMult = 0.15f; }
+        else if (diff == 1)  { bodyDamageMult = 0.90f; durMult = 0.30f; }
+        else if (diff == 0)  { bodyDamageMult = 0.75f; durMult = 0.60f; }
+        else if (diff == -1) { bodyDamageMult = 0.35f; durMult = 0.85f; }
+        else                 { bodyDamageMult = 0.10f; durMult = 1.00f; }
+
+        float bodyDamage = rawDamage * bodyDamageMult;
+
+        // 护甲吸收
+        if (!IsBroken)
+            bodyDamage *= (1f - CurrentAbsorption);
+
+        // 护甲耐久消耗
+        float durDamage = rawDamage * durMult;
+        ApplyDurabilityDamage(durDamage);
+
+        return Mathf.Max(0f, bodyDamage);
+    }
+
     // ══════════════════════════════════════════════════
     //  耐久管理
     // ══════════════════════════════════════════════════

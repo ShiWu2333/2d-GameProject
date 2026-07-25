@@ -22,34 +22,149 @@ public class Bullet : MonoBehaviour
     public GameObject hitEffectPrefab;
 
     private const float MaxLifetime = 10f;
+    private Vector2 previousPosition;
+    private Rigidbody2D rb;
+    private bool hasHit;
 
     private void Start()
     {
+        previousPosition = transform.position;
+        rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.gravityScale = 0f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        }
+
+        var col = GetComponent<Collider2D>();
+        if (col != null)
+            col.isTrigger = true;
+
+        int playerBulletLayer = LayerMask.NameToLayer("PlayerBullet");
+        if (playerBulletLayer >= 0)
+            gameObject.layer = playerBulletLayer;
+
         // 若武器未赋值 origin，则以生成位置为起点
         if (origin == Vector2.zero)
             origin = transform.position;
         Destroy(gameObject, MaxLifetime);
+
+        // 如果 hitLayers 未设置，自动包含 Enemy 层
+        if (hitLayers.value == 0)
+        {
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer >= 0)
+                hitLayers = 1 << enemyLayer;
+            else
+                hitLayers = ~0; // 所有层
+        }
     }
 
     private void Update()
     {
+        SweepForHit();
+
         if (Vector2.Distance(transform.position, origin) >= maxRange)
             Destroy(gameObject);
+
+        previousPosition = transform.position;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (((1 << other.gameObject.layer) & hitLayers) == 0) return;
+        TryHandleHit(other, transform.position);
+    }
 
-        float finalDamage = CalculateFinalDamage(other.gameObject);
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        // 碰到实体墙壁直接销毁
+        if (collision.collider != null)
+            TryHandleHit(collision.collider, transform.position);
+    }
 
-        IDamageable damageable = other.GetComponent<IDamageable>();
-        damageable?.TakeDamage(finalDamage);
+    private void SweepForHit()
+    {
+        if (hasHit) return;
 
-        if (hitEffectPrefab != null)
-            Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
+        Vector2 currentPosition = transform.position;
+        Vector2 delta = currentPosition - previousPosition;
+        float distance = delta.magnitude;
+        if (distance <= 0.001f) return;
 
-        Destroy(gameObject);
+        int wallLayer = LayerMask.NameToLayer("Wall");
+        int mask = hitLayers.value;
+        if (wallLayer >= 0)
+            mask |= 1 << wallLayer;
+
+        RaycastHit2D[] hits = Physics2D.RaycastAll(previousPosition, delta.normalized, distance, mask);
+        RaycastHit2D closest = default;
+        bool hasClosest = false;
+
+        foreach (var hit in hits)
+        {
+            if (hit.collider == null || hit.collider.gameObject == gameObject) continue;
+            if (!IsRelevantHit(hit.collider)) continue;
+
+            if (!hasClosest || hit.distance < closest.distance)
+            {
+                closest = hit;
+                hasClosest = true;
+            }
+        }
+
+        if (hasClosest)
+            TryHandleHit(closest.collider, closest.point);
+    }
+
+    private bool TryHandleHit(Collider2D other, Vector2 hitPosition)
+    {
+        if (hasHit || other == null) return false;
+
+        // 不伤害玩家（玩家子弹不打玩家）
+        if (other.GetComponentInParent<PlayerStats>() != null) return false;
+        if (other.GetComponentInParent<PlayerController>() != null) return false;
+
+        // 不被地面物品/容器阻挡
+        if (other.GetComponentInParent<GroundItem>() != null) return false;
+        if (other.GetComponentInParent<LootContainer>() != null) return false;
+
+        // 检查是否是可伤害目标
+        IDamageable damageable = other.GetComponentInParent<IDamageable>();
+        if (damageable != null)
+        {
+            var damageTarget = damageable as Component;
+            GameObject targetObject = damageTarget != null ? damageTarget.gameObject : other.gameObject;
+            float finalDamage = CalculateFinalDamage(targetObject);
+            damageable.TakeDamage(finalDamage);
+
+            if (hitEffectPrefab != null)
+                Instantiate(hitEffectPrefab, hitPosition, Quaternion.identity);
+
+            hasHit = true;
+            Destroy(gameObject);
+            return true;
+        }
+
+        // 非可伤害目标：如果碰撞体不是触发器（实体墙壁），则子弹销毁
+        if (!other.isTrigger)
+        {
+            hasHit = true;
+            Destroy(gameObject);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsRelevantHit(Collider2D other)
+    {
+        if (other == null) return false;
+        if (other.GetComponentInParent<PlayerStats>() != null) return false;
+        if (other.GetComponentInParent<PlayerController>() != null) return false;
+        if (other.GetComponentInParent<GroundItem>() != null) return false;
+        if (other.GetComponentInParent<LootContainer>() != null) return false;
+        if (other.GetComponentInParent<IDamageable>() != null) return true;
+        return !other.isTrigger;
     }
 
     /// <summary>

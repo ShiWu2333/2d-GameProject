@@ -62,12 +62,21 @@ public class PlayerController : MonoBehaviour
 
         if (bodySprite == null)
             bodySprite = GetComponent<SpriteRenderer>();
+
+        var wallGuard = GetComponent<WallCollisionGuard>();
+        if (wallGuard == null)
+            wallGuard = gameObject.AddComponent<WallCollisionGuard>();
+
+        int wallLayer = LayerMask.NameToLayer("Wall");
+        if (wallLayer >= 0)
+            wallGuard.wallLayer = 1 << wallLayer;
     }
 
     void Update()
     {
         if (!stats.IsAlive) return;
         if (PauseMenu.IsGamePaused) return;
+        if (GameManager.Instance != null && GameManager.Instance.isGameOver) return;
 
         // 背包打开时禁止移动和射击，只允许背包操作
         if (IsInventoryOpen() || IsContainerOpen())

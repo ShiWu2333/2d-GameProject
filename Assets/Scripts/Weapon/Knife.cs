@@ -50,6 +50,16 @@ public class Knife : WeaponBase
         bulletSpeed    = 0f;
         pelletsPerShot = 0;
 
+        // 如果 hitLayers 未设置，自动包含 Enemy 层
+        if (hitLayers.value == 0)
+        {
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer >= 0)
+                hitLayers = 1 << enemyLayer;
+            else
+                hitLayers = ~0;
+        }
+
         base.Awake();
     }
 
@@ -114,12 +124,22 @@ public class Knife : WeaponBase
             float   threshold = Mathf.Cos(attackAngle * 0.5f * Mathf.Deg2Rad);
             if (dot < threshold) continue;
 
-            IDamageable target = col.GetComponent<IDamageable>();
+            IDamageable target = col.GetComponentInParent<IDamageable>();
             if (target != null)
             {
+                int wallLayer = LayerMask.NameToLayer("Wall");
+                if (wallLayer >= 0)
+                {
+                    Vector2 toTarget = (Vector2)col.bounds.center - (Vector2)firePoint.position;
+                    RaycastHit2D wallHit = Physics2D.Raycast(
+                        firePoint.position, toTarget.normalized, toTarget.magnitude, 1 << wallLayer);
+                    if (wallHit.collider != null)
+                        continue;
+                }
+
                 // 近战走护甲的 ProcessMeleeHit，有护甲则减伤但不消耗耐久
                 float finalDamage = damage;
-                var armor = col.GetComponent<ArmorComponent>();
+                var armor = col.GetComponentInParent<ArmorComponent>();
                 if (armor != null)
                     finalDamage = armor.ProcessMeleeHit(damage);
 

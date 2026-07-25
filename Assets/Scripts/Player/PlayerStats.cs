@@ -4,7 +4,7 @@ using UnityEngine.Events;
 /// <summary>
 /// 玩家属性：血量、体力
 /// </summary>
-public class PlayerStats : MonoBehaviour
+public class PlayerStats : MonoBehaviour, IDamageable
 {
     [Header("血量")]
     public float maxHealth = 100f;
