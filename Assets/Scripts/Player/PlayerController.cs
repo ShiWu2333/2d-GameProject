@@ -26,6 +26,10 @@ public class PlayerController : MonoBehaviour
     [Tooltip("身体朝向旋转速度（度/秒，0 = 瞬间）")]
     public float bodyRotateSpeed = 720f;
 
+    [Tooltip("旋转阻尼平滑时间（秒），防止鼠标抖动导致身体抽搐")]
+    [Range(0.01f, 0.2f)]
+    public float rotationSmoothTime = 0.05f;
+
     // ── 组件缓存 ─────────────────────────────────────
     private Rigidbody2D    rb;
     private PlayerStats    stats;
@@ -40,6 +44,10 @@ public class PlayerController : MonoBehaviour
     private bool    isSprinting;
     private bool    triggerHeld;
     private bool    isAiming;
+
+    // 旋转平滑
+    private float smoothedAngle;
+    private float angleVelocity;
 
     /// <summary>鼠标世界坐标（供其他脚本读取）</summary>
     public Vector2 MouseWorldPos { get; private set; }
@@ -77,6 +85,9 @@ public class PlayerController : MonoBehaviour
         var wallGuard = GetComponent<WallCollisionGuard>();
         if (wallGuard != null)
             Destroy(wallGuard);
+
+        // 初始化旋转平滑状态
+        smoothedAngle = transform.eulerAngles.z;
     }
 
     // ══════════════════════════════════════════════════
@@ -203,24 +214,28 @@ public class PlayerController : MonoBehaviour
         Vector2 dir = MouseWorldPos - (Vector2)transform.position;
         if (dir.sqrMagnitude < 0.0001f) return;
 
-        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        float targetAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
         // 身体朝向鼠标（-90 因为 Sprite 默认正面朝上）
-        float bodyAngle = angle - 90f;
-        if (bodyRotateSpeed <= 0f)
+        float bodyTarget = targetAngle - 90f;
+
+        if (bodyRotateSpeed <= 0f && rotationSmoothTime <= 0f)
         {
-            transform.rotation = Quaternion.Euler(0f, 0f, bodyAngle);
+            // 完全无平滑，瞬间对准
+            transform.rotation = Quaternion.Euler(0f, 0f, bodyTarget);
         }
         else
         {
-            Quaternion target = Quaternion.Euler(0f, 0f, bodyAngle);
-            transform.rotation = Quaternion.RotateTowards(
-                transform.rotation, target, bodyRotateSpeed * Time.deltaTime);
+            // 使用 SmoothDampAngle 做轻微阻尼，消除鼠标微抖导致的抽搐
+            smoothedAngle = Mathf.SmoothDampAngle(
+                smoothedAngle, bodyTarget, ref angleVelocity, rotationSmoothTime,
+                bodyRotateSpeed > 0f ? bodyRotateSpeed : Mathf.Infinity);
+            transform.rotation = Quaternion.Euler(0f, 0f, smoothedAngle);
         }
 
-        // AimPivot 精确指向鼠标（无平滑）
+        // AimPivot 也使用相同的平滑角度（保持与身体同步）
         if (aimPivot != null)
-            aimPivot.rotation = Quaternion.Euler(0f, 0f, angle);
+            aimPivot.rotation = Quaternion.Euler(0f, 0f, smoothedAngle + 90f);
     }
 
     // ══════════════════════════════════════════════════
