@@ -31,8 +31,8 @@ public static class WeaponLayerSetup
             sorter.autoFindSpriteRenderers = true;
             sorter.bodyObjectName   = "Body";
             sorter.barrelObjectName = "Barrel";
-            sorter.barrelLayerOffset = 1;
-            sorter.bodyLayerOffset   = 0;
+            sorter.frontOffset = 2;
+            sorter.backOffset  = -1;
 
             EditorUtility.SetDirty(prefab);
             processed++;

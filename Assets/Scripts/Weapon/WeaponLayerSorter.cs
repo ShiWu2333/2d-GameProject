@@ -2,122 +2,106 @@ using UnityEngine;
 
 /// <summary>
 /// 武器图层排序器
-/// 确保武器所有部件（枪身+枪口）始终渲染在角色之上
-/// 挂在武器根对象上，Awake时自动设置
+/// 确保武器精灵始终渲染在玩家精灵之上
 /// </summary>
 public class WeaponLayerSorter : MonoBehaviour
 {
-    [Header("图层偏移（相对于角色 sortingOrder）")]
-    [Tooltip("枪身图层偏移")]
-    public int bodyLayerOffset = 1;
-
-    [Tooltip("枪管/枪口图层偏移")]
-    public int barrelLayerOffset = 2;
+    [Header("图层偏移（相对于玩家最高 sortingOrder）")]
+    public int frontOffset = 2;
+    public int backOffset  = -1;
 
     [Header("自动查找")]
     public bool autoFindSpriteRenderers = true;
     public string bodyObjectName   = "Body";
     public string barrelObjectName = "Barrel";
 
-    // 运行时引用
-    private SpriteRenderer playerRenderer;
-    private SpriteRenderer bodyRenderer;
-    private SpriteRenderer barrelRenderer;
+    private SpriteRenderer[] playerRenderers;
+    private SpriteRenderer   bodyRenderer;
+    private SpriteRenderer   barrelRenderer;
+    private bool             isEquipped;
 
-    private void Awake()
+    void Awake()
     {
         if (autoFindSpriteRenderers)
-            FindRenderers();
+            FindWeaponRenderers();
     }
 
-    private void Start()
-    {
-        ApplySorting();
-    }
-
-    /// <summary>
-    /// 武器被装备时由WeaponBase调用
-    /// </summary>
     public void OnWeaponEquipped(PlayerController player)
     {
+        isEquipped = true;
         if (player != null)
-            playerRenderer = player.GetComponent<SpriteRenderer>();
+            playerRenderers = player.GetComponentsInChildren<SpriteRenderer>();
 
         if (autoFindSpriteRenderers)
-            FindRenderers();
-
-        ApplySorting();
+            FindWeaponRenderers();
     }
 
-    /// <summary>
-    /// 武器被卸下时调用
-    /// </summary>
     public void OnWeaponUnequipped()
     {
+        isEquipped = false;
         if (bodyRenderer != null)   bodyRenderer.sortingOrder = 0;
         if (barrelRenderer != null) barrelRenderer.sortingOrder = 0;
     }
 
-    /// <summary>
-    /// 应用图层排序
-    /// </summary>
     public void ApplySorting()
     {
-        // 如果还没找到玩家renderer，尝试从父级获取
-        if (playerRenderer == null)
+        if (!isEquipped)
         {
             var pc = GetComponentInParent<PlayerController>();
             if (pc != null)
-                playerRenderer = pc.GetComponent<SpriteRenderer>();
-        }
-
-        int baseOrder = playerRenderer != null ? playerRenderer.sortingOrder : 0;
-
-        if (bodyRenderer != null)
-            bodyRenderer.sortingOrder = baseOrder + bodyLayerOffset;
-
-        if (barrelRenderer != null)
-            barrelRenderer.sortingOrder = baseOrder + barrelLayerOffset;
-
-        // 兜底：即使没找到具体部件，也把所有子SpriteRenderer提到角色之上
-        if (bodyRenderer == null && barrelRenderer == null)
-        {
-            var allRenderers = GetComponentsInChildren<SpriteRenderer>();
-            for (int i = 0; i < allRenderers.Length; i++)
             {
-                allRenderers[i].sortingOrder = baseOrder + 1 + i;
+                playerRenderers = pc.GetComponentsInChildren<SpriteRenderer>();
+                isEquipped = true;
             }
         }
     }
 
-    private void FindRenderers()
+    void LateUpdate()
     {
-        // 查找Body
+        if (!isEquipped) return;
+        if (playerRenderers == null || playerRenderers.Length == 0) return;
+
+        // 找到玩家精灵中最低和最高的 sortingOrder
+        // 身体应该是最低的，头应该是最高的
+        // 武器放在中间（身体之上，头之下）
+        int minPlayerOrder = int.MaxValue;
+        int maxPlayerOrder = int.MinValue;
+        foreach (var sr in playerRenderers)
+        {
+            if (sr == bodyRenderer || sr == barrelRenderer) continue;
+            if (sr.sortingOrder < minPlayerOrder)
+                minPlayerOrder = sr.sortingOrder;
+            if (sr.sortingOrder > maxPlayerOrder)
+                maxPlayerOrder = sr.sortingOrder;
+        }
+
+        if (minPlayerOrder == int.MaxValue) minPlayerOrder = 0;
+        if (maxPlayerOrder == int.MinValue) maxPlayerOrder = 0;
+
+        // 武器放在最低（身体）和最高（头）之间
+        int weaponOrder = minPlayerOrder + 1;
+
+        if (bodyRenderer != null)
+            bodyRenderer.sortingOrder = weaponOrder;
+        if (barrelRenderer != null)
+            barrelRenderer.sortingOrder = weaponOrder;
+    }
+
+    private void FindWeaponRenderers()
+    {
         Transform bodyTf = transform.Find(bodyObjectName);
         if (bodyTf != null)
             bodyRenderer = bodyTf.GetComponent<SpriteRenderer>();
 
-        // 查找Barrel
         Transform barrelTf = transform.Find(barrelObjectName);
         if (barrelTf != null)
             barrelRenderer = barrelTf.GetComponent<SpriteRenderer>();
 
-        // 兜底：按子对象顺序赋值
-        if (bodyRenderer == null || barrelRenderer == null)
+        if (bodyRenderer == null)
         {
             var children = GetComponentsInChildren<SpriteRenderer>();
-            if (children.Length >= 1 && bodyRenderer == null)
-                bodyRenderer = children[0];
-            if (children.Length >= 2 && barrelRenderer == null)
-                barrelRenderer = children[1];
-        }
-
-        // 查找玩家renderer
-        if (playerRenderer == null)
-        {
-            var pc = GetComponentInParent<PlayerController>();
-            if (pc != null)
-                playerRenderer = pc.GetComponent<SpriteRenderer>();
+            if (children.Length >= 1) bodyRenderer = children[0];
+            if (children.Length >= 2) barrelRenderer = children[1];
         }
     }
 }

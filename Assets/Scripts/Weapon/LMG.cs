@@ -22,9 +22,9 @@ public class LMG : WeaponBase
         recoil         = 4f;      // 单发后坐力降低（连射累积仍然很大）
         baseSpread     = 4f;
         moveSpreadBonus= 5f;      // 移动散射极大（重武器惩罚高）
-        moveSpeedMult  = 0.45f;
+        moveSpeedMult  = 0.65f;
         aimSpreadMult  = 0.3f;    // 瞄准精准度中等
-        aimMoveSpeedMult= 0.3f;   // 瞄准几乎不能动
+        aimMoveSpeedMult= 0.4f;   // 瞄准移速慢
         isSemiAuto     = false;
 
         bulletSpeed    = 26f;
