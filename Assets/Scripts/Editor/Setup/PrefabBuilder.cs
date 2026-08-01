@@ -22,6 +22,8 @@ public static class PrefabBuilder
         public Vector2     bodySize, barrelSize;
         public Vector2     barrelOffset, firePointOffset;
         public AmmoType    ammo;
+        public string      topViewSpritePath; // 顶视图精灵路径
+        public float       spriteRotZ;        // 精灵Z轴旋转角度
     }
 
     public static readonly WeaponDef[] WeaponDefs =
@@ -29,31 +31,38 @@ public static class PrefabBuilder
         new WeaponDef { label="冲锋枪",     script=typeof(SMG),           ammo=AmmoType.SMG,
             bodyCol=new Color(0f,0.85f,0.85f),  barrelCol=new Color(0f,0.5f,0.5f),
             bodySize=new Vector2(0.18f,0.28f),  barrelSize=new Vector2(0.22f,0.08f),
-            barrelOffset=new Vector2(0.18f,0f), firePointOffset=new Vector2(0.30f,0f) },
+            barrelOffset=new Vector2(0.18f,0f), firePointOffset=new Vector2(0.30f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_冲锋枪俯视.png", spriteRotZ=-90f },
         new WeaponDef { label="突击步枪",   script=typeof(AssaultRifle),  ammo=AmmoType.Rifle,
             bodyCol=new Color(0.2f,0.4f,1f),    barrelCol=new Color(0.1f,0.2f,0.7f),
             bodySize=new Vector2(0.16f,0.30f),  barrelSize=new Vector2(0.28f,0.08f),
-            barrelOffset=new Vector2(0.20f,0f), firePointOffset=new Vector2(0.35f,0f) },
+            barrelOffset=new Vector2(0.20f,0f), firePointOffset=new Vector2(0.35f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_步枪俯视.png", spriteRotZ=-90f },
         new WeaponDef { label="射手步枪",   script=typeof(MarksmanRifle), ammo=AmmoType.Rifle,
             bodyCol=new Color(0.1f,0.6f,0.2f),  barrelCol=new Color(0.05f,0.35f,0.1f),
             bodySize=new Vector2(0.14f,0.28f),  barrelSize=new Vector2(0.36f,0.07f),
-            barrelOffset=new Vector2(0.22f,0f), firePointOffset=new Vector2(0.42f,0f) },
+            barrelOffset=new Vector2(0.22f,0f), firePointOffset=new Vector2(0.42f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_射手步枪俯视.png", spriteRotZ=-90f },
         new WeaponDef { label="连发霰弹枪", script=typeof(AutoShotgun),   ammo=AmmoType.Shotgun,
             bodyCol=new Color(1f,0.5f,0f),      barrelCol=new Color(0.7f,0.3f,0f),
             bodySize=new Vector2(0.20f,0.34f),  barrelSize=new Vector2(0.18f,0.14f),
-            barrelOffset=new Vector2(0.17f,0f), firePointOffset=new Vector2(0.28f,0f) },
+            barrelOffset=new Vector2(0.17f,0f), firePointOffset=new Vector2(0.28f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_霰弹枪俯视.png", spriteRotZ=-90f },
         new WeaponDef { label="轻机枪",     script=typeof(LMG),           ammo=AmmoType.LMG,
             bodyCol=new Color(1f,0.9f,0f),      barrelCol=new Color(0.7f,0.6f,0f),
             bodySize=new Vector2(0.22f,0.40f),  barrelSize=new Vector2(0.32f,0.10f),
-            barrelOffset=new Vector2(0.24f,0f), firePointOffset=new Vector2(0.40f,0f) },
+            barrelOffset=new Vector2(0.24f,0f), firePointOffset=new Vector2(0.40f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_轻机枪顶视.png", spriteRotZ=-90f },
         new WeaponDef { label="自动手枪",   script=typeof(AutoPistol),    ammo=AmmoType.SMG,
             bodyCol=new Color(0.7f,0.2f,1f),    barrelCol=new Color(0.45f,0.1f,0.7f),
             bodySize=new Vector2(0.16f,0.22f),  barrelSize=new Vector2(0.18f,0.07f),
-            barrelOffset=new Vector2(0.15f,0f), firePointOffset=new Vector2(0.25f,0f) },
+            barrelOffset=new Vector2(0.15f,0f), firePointOffset=new Vector2(0.25f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_手枪俯视.png", spriteRotZ=-90f },
         new WeaponDef { label="刀",         script=typeof(Knife),         ammo=AmmoType.None,
             bodyCol=new Color(0.75f,0.75f,0.75f), barrelCol=new Color(0.95f,0.95f,0.95f),
             bodySize=new Vector2(0.30f,0.10f),  barrelSize=new Vector2(0.20f,0.06f),
-            barrelOffset=new Vector2(0.26f,0f), firePointOffset=new Vector2(0.38f,0f) },
+            barrelOffset=new Vector2(0.26f,0f), firePointOffset=new Vector2(0.38f,0f),
+            topViewSpritePath="Assets/Assets/Sprites/图片_刀.png", spriteRotZ=0f },
     };
 
     // ── 子弹定义 ──────────────────────────────────────
@@ -151,9 +160,31 @@ public static class PrefabBuilder
             var root = new GameObject(def.script.Name);
             var weapon = (WeaponBase)root.AddComponent(def.script);
 
-            EditorHelper.MakeSquareChild(root.transform, "Body", white, def.bodyCol, def.bodySize);
+            // 尝试加载顶视图精灵
+            Sprite topViewSprite = null;
+            if (!string.IsNullOrEmpty(def.topViewSpritePath))
+                topViewSprite = AssetDatabase.LoadAssetAtPath<Sprite>(def.topViewSpritePath);
+
+            // Body：使用顶视图精灵（白色、原始尺寸），回退到白色方块
+            if (topViewSprite != null)
+            {
+                float spriteScale = (def.script == typeof(Knife)) ? 0.5f : 1f;
+                var body = EditorHelper.MakeSquareChild(root.transform, "Body", topViewSprite, Color.white, Vector2.one * spriteScale);
+                // 旋转精灵使枪口朝向X轴正方向（右）
+                body.transform.localRotation = Quaternion.Euler(0f, 0f, def.spriteRotZ);
+                // 向右偏移，使武器视觉居中于持握位置
+                body.transform.localPosition = new Vector3(0.3f, 0f, 0f);
+            }
+            else
+            {
+                EditorHelper.MakeSquareChild(root.transform, "Body", white, def.bodyCol, def.bodySize);
+            }
+
+            // Barrel：仍然创建（保持结构兼容），但禁用 SpriteRenderer
             var barrel = EditorHelper.MakeSquareChild(root.transform, "Barrel", white, def.barrelCol, def.barrelSize);
             barrel.transform.localPosition = def.barrelOffset;
+            var barrelSR = barrel.GetComponent<SpriteRenderer>();
+            if (barrelSR != null) barrelSR.enabled = false;
 
             var fp = new GameObject("FirePoint");
             fp.transform.SetParent(root.transform, false);
