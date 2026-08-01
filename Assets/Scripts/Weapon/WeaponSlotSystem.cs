@@ -44,6 +44,9 @@ public class WeaponSlotSystem : MonoBehaviour
 
     void Start()
     {
+        // 自动查找 AimPivot 下的武器并绑定到槽位
+        AutoBindWeaponsFromAimPivot();
+
         // 初始化：隐藏所有武器，激活默认槽位
         SetAllWeaponsInactive();
         SwitchToSlot(WeaponSlot.Primary1);
@@ -55,6 +58,35 @@ public class WeaponSlotSystem : MonoBehaviour
 
         HandleSlotInput();
         HandleDropInput();
+    }
+
+    /// <summary>
+    /// 自动查找 AimPivot 下已有的武器，绑定到对应槽位
+    /// </summary>
+    private void AutoBindWeaponsFromAimPivot()
+    {
+        if (playerController == null || playerController.aimPivot == null) return;
+
+        var weapons = playerController.aimPivot.GetComponentsInChildren<WeaponBase>(true);
+        foreach (var weapon in weapons)
+        {
+            if (weapon is Knife)
+            {
+                if (melee == null) melee = weapon;
+            }
+            else
+            {
+                if (primary1 == null) primary1 = weapon;
+                else if (primary2 == null) primary2 = weapon;
+            }
+        }
+
+        // 确保所有 AimPivot 下未绑定的武器也被隐藏
+        foreach (var weapon in weapons)
+        {
+            if (weapon != primary1 && weapon != primary2 && weapon != melee)
+                weapon.gameObject.SetActive(false);
+        }
     }
 
     // ── 按键检测 ──────────────────────────────────────
@@ -146,8 +178,8 @@ public class WeaponSlotSystem : MonoBehaviour
     // ── 切换槽位 ──────────────────────────────────────
     public void SwitchToSlot(WeaponSlot slot)
     {
-        // 隐藏当前武器
-        SetWeaponActive(CurrentWeapon, false);
+        // 隐藏所有武器
+        SetAllWeaponsInactive();
 
         CurrentSlot = slot;
         CurrentWeapon = GetWeaponInSlot(slot);

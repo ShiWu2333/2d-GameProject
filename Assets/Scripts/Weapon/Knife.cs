@@ -120,7 +120,7 @@ public class Knife : WeaponBase
 
             // 扇形角度过滤
             Vector2 dir = (col.transform.position - firePoint.position).normalized;
-            float   dot = Vector2.Dot(firePoint.up, dir);
+            float   dot = Vector2.Dot(firePoint.right, dir);
             float   threshold = Mathf.Cos(attackAngle * 0.5f * Mathf.Deg2Rad);
             if (dot < threshold) continue;
 
@@ -163,7 +163,7 @@ public class Knife : WeaponBase
         UnityEditor.Handles.DrawSolidArc(
             firePoint.position,
             Vector3.forward,
-            Quaternion.Euler(0, 0, -attackAngle * 0.5f) * firePoint.up,
+            Quaternion.Euler(0, 0, -attackAngle * 0.5f) * firePoint.right,
             attackAngle,
             attackRadius);
     }
