@@ -12,6 +12,7 @@ public class GameSetupHelper : MonoBehaviour
     public bool autoSetupEnemies = true;
     public bool autoSetupPlayer = true;
     public bool autoSetupPhysics = true;
+    public bool autoSetupPathfinding = true;
     public bool createMvpArenaIfMissing = true;
     public bool createTestEnemyIfMissing = true;
 
@@ -35,6 +36,9 @@ public class GameSetupHelper : MonoBehaviour
 
         if (autoSetupEnemies)
             SetupEnemies();
+
+        if (autoSetupPathfinding)
+            EnsurePathfindingGrid();
 
         // 确保有 GameManager
         if (GameManager.Instance == null && GetComponent<GameManager>() == null)
@@ -299,5 +303,15 @@ public class GameSetupHelper : MonoBehaviour
         tex.SetPixel(0, 0, Color.white);
         tex.Apply();
         return Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+    }
+
+    private void EnsurePathfindingGrid()
+    {
+        if (Grid2D.Instance != null) return;
+        if (FindObjectOfType<Grid2D>() != null) return;
+
+        // PathfindingSetup 会通过 RuntimeInitializeOnLoadMethod 自动创建
+        // 这里做保险检查
+        Debug.Log("[GameSetupHelper] 寻路网格将由 PathfindingSetup 自动创建");
     }
 }

@@ -23,6 +23,9 @@ public class EnemySetup : MonoBehaviour
     [Header("巡逻路径（可选）")]
     public Transform[] patrolPoints;
 
+    [Tooltip("巡逻路线组件（优先级高于patrolPoints）")]
+    public PatrolRoute patrolRoute;
+
     public enum EnemyPreset
     {
         Weak,       // 弱小：低血量、低伤害、反应慢
@@ -48,9 +51,8 @@ public class EnemySetup : MonoBehaviour
         }
         rb.gravityScale = 0f;
         rb.freezeRotation = true;
-        rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rb.bodyType = RigidbodyType2D.Kinematic;
+        rb.simulated = true;
 
         // 确保有 Collider2D
         var col = GetComponent<Collider2D>();
@@ -84,10 +86,6 @@ public class EnemySetup : MonoBehaviour
         // 确保有 EnemyHealthBar
         if (GetComponent<EnemyHealthBar>() == null)
             gameObject.AddComponent<EnemyHealthBar>();
-
-        var wallGuard = GetComponent<WallCollisionGuard>();
-        if (wallGuard == null)
-            wallGuard = gameObject.AddComponent<WallCollisionGuard>();
 
         // 确保有 SpriteRenderer
         if (GetComponent<SpriteRenderer>() == null)
@@ -191,7 +189,15 @@ public class EnemySetup : MonoBehaviour
 
         // 设置AI初始状态和巡逻路径
         ai.defaultState = initialState;
-        if (patrolPoints != null && patrolPoints.Length > 0)
+
+        // 巡逻路线（优先）
+        if (patrolRoute != null)
+        {
+            ai.patrolRoute = patrolRoute;
+            if (initialState == EnemyAI.AIState.Idle)
+                ai.defaultState = EnemyAI.AIState.Patrol;
+        }
+        else if (patrolPoints != null && patrolPoints.Length > 0)
         {
             ai.patrolPoints = patrolPoints;
             if (initialState == EnemyAI.AIState.Idle)
@@ -208,10 +214,6 @@ public class EnemySetup : MonoBehaviour
             mask = 1 << defaultLayer;
         if (mask == 0) mask = ~0; // 全部层
         ai.wallLayer = mask;
-
-        var wallGuard = GetComponent<WallCollisionGuard>();
-        if (wallGuard != null)
-            wallGuard.wallLayer = mask;
 
         // 设置敌人自身层
         int enemyLayer = LayerMask.NameToLayer("Enemy");

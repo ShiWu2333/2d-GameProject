@@ -41,11 +41,21 @@ public class GameManager : MonoBehaviour
         isVictory = false;
         gameStartTime = Time.time;
 
-        // 统计场景中的敌人数量
+        // 统计场景中的敌人数量（含刷新点的敌人）
         totalEnemies = FindObjectsOfType<EnemyStats>().Length;
+        
+        // 如果有刷新点，不使用"全部击杀=胜利"逻辑
+        var spawners = FindObjectsOfType<EnemySpawner>();
+        if (spawners.Length > 0)
+        {
+            // 有刷新点时，totalEnemies设为较大值防止误触发胜利
+            // 可通过外部设置具体通关条件
+            totalEnemies = int.MaxValue;
+        }
+
         killedEnemies = 0;
 
-        Debug.Log($"[GameManager] 关卡开始！敌人数量：{totalEnemies}");
+        Debug.Log($"[GameManager] 关卡开始！初始敌人数量：{FindObjectsOfType<EnemyStats>().Length}");
 
         // 监听玩家死亡
         var player = GameObject.FindGameObjectWithTag("Player");
